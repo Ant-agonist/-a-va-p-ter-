@@ -1,13 +1,40 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Bomber Game</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Bomber Maze</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #a0d8f7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+    }
+    canvas {
+      border: 3px solid #333;
+      image-rendering: pixelated;
+      background-color: #eef;
+    }
+    #game-over {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      color: red;
+      font-weight: bold;
+      display: none;
+      text-shadow: 2px 2px 5px black;
+    }
+  </style>
 </head>
 <body>
-    <h1>Bomber Game</h1>
-    <canvas id="gameCanvas" width="768" height="768"></canvas>
-    <script src="script.js"></script>
+  <canvas id="game" width="480" height="480"></canvas>
+  <div id="game-over">GAME OVER</div>
+  <script src="script.js"></script>
 </body>
 </html>
