@@ -141,4 +141,53 @@ function updateExplosions() {
     );
 
     if (explosions[i].timer <= 0) {
-      explosions.splice(i, 1
+      explosions.splice(i, 1);
+    }
+  }
+}
+
+// Pose une bombe
+function placeBomb(x, y) {
+  if (!bombs.some(b => b.x === x && b.y === y)) {
+    bombs.push({ x: x, y: y, timer: bombTimer });
+  }
+}
+
+// Gestion des touches (ZQSD)
+document.addEventListener("keydown", (e) => {
+  if (document.getElementById("game-over").style.display === "block") return;
+  let newX = player.x;
+  let newY = player.y;
+  switch (e.key.toLowerCase()) {
+    case "z":
+      newY--;
+      break;
+    case "s":
+      newY++;
+      break;
+    case "q":
+      newX--;
+      break;
+    case "d":
+      newX++;
+      break;
+    case " ":
+      // pose bombe espace
+      placeBomb(player.x, player.y);
+      return;
+    default:
+      return;
+  }
+  if (isFree(newX, newY)) {
+    player.x = newX;
+    player.y = newY;
+  }
+});
+
+let gameInterval = setInterval(() => {
+  if (player.lives <= 0) return;
+  moveBots();
+  updateBombs();
+  updateExplosions();
+  draw();
+}, 100);
