@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Puissance 4 - Contre l'ordinateur & Score BO3</title>
+<title>Puissance 4 avec Bombe & IA avancée</title>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,6 +26,13 @@
     gap: 15px;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
+  }
+  #difficultySelect {
+    padding: 6px 10px;
+    font-size: 1em;
+    border-radius: 5px;
+    border: none;
   }
   #game {
     display: grid;
@@ -71,6 +78,11 @@
   .player2 {
     background: radial-gradient(circle at 30% 30%, #f1c40f, #b7950b);
   }
+  .bomb {
+    font-size: 30px;
+    color: black;
+    text-shadow: 1px 1px 3px #fff inset;
+  }
   .dropAnimation {
     animation-name: drop;
     animation-duration: 0.5s;
@@ -80,8 +92,6 @@
     0% { transform: translateY(-150px); }
     100% { transform: translateY(0); }
   }
-
-  /* Animation de surbrillance victoire */
   .highlighted {
     animation: blink 1s infinite alternate;
     box-shadow: 0 0 15px 5px yellow;
@@ -94,7 +104,6 @@
       box-shadow: 0 0 30px 10px orange;
     }
   }
-
   #status {
     margin: 20px 0 10px 0;
     font-size: 1.4em;
@@ -125,7 +134,6 @@
     font-size: 0.85em;
     color: #ced6e0;
   }
-
   /* Responsive */
   @media (max-width: 600px) {
     #game {
@@ -159,14 +167,19 @@
 </head>
 <body>
 
-<h1>Puissance 4 - Contre l'ordinateur & Score BO3</h1>
+<h1>Puissance 4 avec Bombe & IA avancée</h1>
 
 <div id="controls">
+  <label for="difficultySelect">Difficulté IA :</label>
+  <select id="difficultySelect" aria-label="Choisir la difficulté de l'ordinateur">
+    <option value="medium" selected>Moyen</option>
+    <option value="hard">Difficile</option>
+  </select>
   <button id="restart">Nouvelle partie</button>
   <button id="resetScore">Réinitialiser score</button>
 </div>
 
-<div id="scoreboard">
+<div id="scoreboard" aria-live="polite" aria-atomic="true">
   <span>Score - Joueur (rouge) : <span id="scoreP1">0</span></span> | 
   <span>Ordinateur (jaune) : <span id="scoreP2">0</span></span>
 </div>
@@ -180,12 +193,15 @@
 <script>
   const ROWS = 6;
   const COLS = 7;
+  const MAX_DEPTH = 4;
 
   let board = [];
   let currentPlayer = 1; // 1 = joueur, 2 = IA
   let gameOver = false;
   let scoreP1 = 0;
   let scoreP2 = 0;
+  let winningCells = [];
+  let difficulty = 'medium'; // 'medium' or 'hard'
 
   const gameDiv = document.getElementById('game');
   const statusDiv = document.getElementById('status');
@@ -193,8 +209,11 @@
   const resetScoreBtn = document.getElementById('resetScore');
   const scoreP1Span = document.getElementById('scoreP1');
   const scoreP2Span = document.getElementById('scoreP2');
+  const difficultySelect = document.getElementById('difficultySelect');
 
-  let winningCells = [];
+  difficultySelect.addEventListener('change', () => {
+    difficulty = difficultySelect.value;
+  });
 
   function initBoard() {
     board = [];
@@ -211,7 +230,7 @@
         cell.setAttribute('aria-label', `Ligne ${r+1}, colonne ${c+1}`);
         cell.addEventListener('click', () => {
           if (!gameOver && currentPlayer === 1 && isColumnPlayable(c)) {
-            placeDisc(c);
+            placeDisc(c, 1);
           }
         });
         gameDiv.appendChild(cell);
@@ -229,43 +248,78 @@
     statusDiv.textContent = message;
   }
 
-  function placeDisc(col) {
+  // placeDisc avec paramètre player et bombage
+  // si joueur 1, bombes 10% chance
+  function placeDisc(col, player, isFromGravity=false) {
     if (gameOver) return;
 
     for(let row = ROWS -1; row >= 0; row--) {
       if (board[row][col] === 0) {
-        board[row][col] = currentPlayer;
-        animateDisc(row, col, currentPlayer);
+        let isBomb = false;
+        if (!isFromGravity && player === 1) {
+          isBomb = Math.random() < 0.10;
+        } else if (!isFromGravity && player === 2) {
+          // Option : IA peut aussi avoir bombes ? Ici non.
+          isBomb = false;
+        }
 
-        if (checkWin(row, col)) {
-          gameOver = true;
-          if (currentPlayer === 1) scoreP1++;
-          else scoreP2++;
-          updateScore();
-          updateStatus(`🎉 ${currentPlayer === 1 ? 'Vous avez' : "L'ordinateur a"} gagné !`);
-          highlightWinningCells();
-        } else if (isDraw()) {
-          gameOver = true;
-          updateStatus(`Match nul !`);
-        } else {
-          currentPlayer = currentPlayer === 1 ? 2 : 1;
-          updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
-          updateCellsCursor();
-          if (currentPlayer === 2 && !gameOver) {
-            setTimeout(aiPlay, 700);
+        board[row][col] = player * (isBomb ? 10 : 1); // bombe = 10*player (10 ou 20)
+
+        animateDisc(row, col, player, isBomb);
+
+        if (!isFromGravity && isBomb) {
+          // bombe => enlever jeton adverse aléatoire
+          removeRandomOpponentDisc(player);
+          applyGravity();
+          renderBoardAfterGravity();
+          // check victoire après gravité
+          if (checkWinAfterGravity(player)) {
+            gameOver = true;
+            if (player === 1) scoreP1++;
+            else scoreP2++;
+            updateScore();
+            updateStatus(`🎉 ${player === 1 ? 'Vous avez' : "L'ordinateur a"} gagné après explosion !`);
+            highlightWinningCells();
+            return;
           }
         }
-        updateCellsCursor();
+
+        if (!isFromGravity) {
+          if (checkWin(row, col)) {
+            gameOver = true;
+            if (player === 1) scoreP1++;
+            else scoreP2++;
+            updateScore();
+            updateStatus(`🎉 ${player === 1 ? 'Vous avez' : "L'ordinateur a"} gagné !`);
+            highlightWinningCells();
+          } else if (isDraw()) {
+            gameOver = true;
+            updateStatus(`Match nul !`);
+          } else {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
+            updateCellsCursor();
+            if (currentPlayer === 2 && !gameOver) {
+              setTimeout(aiPlay, 700);
+            }
+          }
+          updateCellsCursor();
+        }
         return;
       }
     }
   }
 
-  function animateDisc(row, col, player) {
+  function animateDisc(row, col, player, isBomb) {
     const cell = gameDiv.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
     if (!cell) return;
+    cell.innerHTML = ''; // clear before adding disc
     const disc = document.createElement('div');
     disc.classList.add('disc', `player${player}`, 'dropAnimation');
+    if (isBomb) {
+      disc.innerHTML = '💣';
+      disc.classList.add('bomb');
+    }
     cell.appendChild(disc);
   }
 
@@ -277,162 +331,385 @@
       gameOver = true;
       highlightWinningCells();
     } else if (scoreP2 >= 2) {
-      updateStatus("🏆 L'ordinateur a gagné le BO3 ! 😞");
+      updateStatus('💻 L\'ordinateur a gagné le BO3 ! 😞');
       gameOver = true;
       highlightWinningCells();
     }
-  }
-
-  function checkWin(row, col) {
-    const player = board[row][col];
-    if (player === 0) return false;
-
-    function countDir(rStep, cStep) {
-      let r = row + rStep;
-      let c = col + cStep;
-      let count = 0;
-      let cells = [];
-      while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
-        count++;
-        cells.push([r,c]);
-        r += rStep;
-        c += cStep;
-      }
-      return {count, cells};
-    }
-
-    const directions = [
-      [0, 1],   // horizontale droite
-      [1, 0],   // verticale bas
-      [1, 1],   // diagonale bas droite
-      [1, -1]   // diagonale bas gauche
-    ];
-
-    for (const [rStep, cStep] of directions) {
-      let total = 1;
-      let winningCellsList = [[row,col]];
-
-      let res1 = countDir(rStep, cStep);
-      let res2 = countDir(-rStep, -cStep);
-
-      total += res1.count + res2.count;
-      winningCellsList = winningCellsList.concat(res1.cells, res2.cells);
-
-      if (total >= 4) {
-        winningCells = winningCellsList;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function isDraw() {
-    return board[0].every(cell => cell !== 0);
-  }
-
-  function highlightWinningCells() {
-    winningCells.forEach(([r,c]) => {
-      const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
-      if(cell) cell.classList.add('highlighted');
-    });
-  }
-
-  function aiPlay() {
-    if (gameOver) return;
-
-    // Colonnes non pleines
-    let availableCols = [];
-    for(let c = 0; c < COLS; c++) {
-      if (board[0][c] === 0) availableCols.push(c);
-    }
-    if (availableCols.length === 0) return;
-
-    // Essayer de gagner
-    for (const c of availableCols) {
-      let r = getNextEmptyRow(c);
-      if (r === -1) continue;
-      board[r][c] = 2;
-      if (checkWin(r, c)) {
-        board[r][c] = 0;
-        placeDisc(c);
-        return;
-      }
-      board[r][c] = 0;
-    }
-
-    // Essayer de bloquer joueur
-    for (const c of availableCols) {
-      let r = getNextEmptyRow(c);
-      if (r === -1) continue;
-      board[r][c] = 1;
-      if (checkWin(r, c)) {
-        board[r][c] = 0;
-        placeDisc(c);
-        return;
-      }
-      board[r][c] = 0;
-    }
-
-    // Sinon colonne aléatoire
-    const choice = availableCols[Math.floor(Math.random() * availableCols.length)];
-    placeDisc(choice);
-  }
-
-  function getNextEmptyRow(col) {
-    for(let r = ROWS - 1; r >= 0; r--) {
-      if (board[r][col] === 0) return r;
-    }
-    return -1;
   }
 
   function isColumnPlayable(col) {
     return board[0][col] === 0;
   }
 
-  function updateCellsCursor() {
+  function checkWin(row, col) {
+    const playerVal = Math.floor(board[row][col] / 10) > 0 ? Math.floor(board[row][col]/10) : board[row][col];
+    winningCells = [];
+
+    // directions to check: horizontal, vertical, diag1, diag2
+    const directions = [
+      { dr: 0, dc: 1 },
+      { dr: 1, dc: 0 },
+      { dr: 1, dc: 1 },
+      { dr: 1, dc: -1 },
+    ];
+
+    for (const {dr, dc} of directions) {
+      let count = 1;
+      let line = [[row,col]];
+      // check one side
+      for(let i=1; i<4; i++) {
+        let nr = row + dr*i;
+        let nc = col + dc*i;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+        let val = Math.floor(board[nr][nc]/10) > 0 ? Math.floor(board[nr][nc]/10) : board[nr][nc];
+        if (val === playerVal) {
+          count++;
+          line.push([nr,nc]);
+        } else break;
+      }
+      // check opposite side
+      for(let i=1; i<4; i++) {
+        let nr = row - dr*i;
+        let nc = col - dc*i;
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+        let val = Math.floor(board[nr][nc]/10) > 0 ? Math.floor(board[nr][nc]/10) : board[nr][nc];
+        if (val === playerVal) {
+          count++;
+          line.push([nr,nc]);
+        } else break;
+      }
+      if (count >= 4) {
+        winningCells = line;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Highlight winning cells with animation
+  function highlightWinningCells() {
+    if (!winningCells.length) return;
+    for(const [r,c] of winningCells) {
+      const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+      if(cell) cell.classList.add('highlighted');
+    }
+  }
+
+  function isDraw() {
+    for(let c=0; c < COLS; c++) {
+      if(board[0][c] === 0) return false;
+    }
+    return true;
+  }
+
+  // Remove random opponent disc when bomb explodes
+  function removeRandomOpponentDisc(player) {
+    const opponent = player === 1 ? 2 : 1;
+    let opponentPositions = [];
+    for(let r=0; r < ROWS; r++) {
+      for(let c=0; c < COLS; c++) {
+        let val = Math.floor(board[r][c]/10) > 0 ? Math.floor(board[r][c]/10) : board[r][c];
+        if(val === opponent) {
+          opponentPositions.push([r,c]);
+        }
+      }
+    }
+    if(opponentPositions.length === 0) return; // rien à enlever
+
+    // choisir un jeton adverse aléatoire à retirer
+    const [rr,cc] = opponentPositions[Math.floor(Math.random()*opponentPositions.length)];
+    board[rr][cc] = 0;
+  }
+
+  // Appliquer gravité : faire tomber jetons dans colonnes si trou
+  function applyGravity() {
+    for(let c=0; c<COLS; c++) {
+      let newCol = [];
+      // collect non-zero jetons (disc or bomb)
+      for(let r=ROWS-1; r>=0; r--) {
+        if(board[r][c] !== 0) newCol.push(board[r][c]);
+      }
+      // remplir la colonne en partant du bas
+      for(let r=ROWS-1; r>=0; r--) {
+        board[r][c] = newCol[ROWS-1 - r] || 0;
+      }
+    }
+  }
+
+  // Met à jour visuellement la grille après gravité (animation plus simple)
+  function renderBoardAfterGravity() {
     for(let r=0; r<ROWS; r++) {
       for(let c=0; c<COLS; c++) {
         const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
-        if (!cell) continue;
-
-        if(gameOver) {
-          cell.style.cursor = 'default';
-          continue;
-        }
-
-        if(r === getNextEmptyRow(c)) {
-          cell.style.cursor = currentPlayer === 1 ? 'pointer' : 'default';
-          cell.classList.remove('full');
-        } else {
-          cell.style.cursor = 'default';
-          cell.classList.add('full');
+        cell.innerHTML = '';
+        let val = board[r][c];
+        if(val !== 0) {
+          let player = Math.floor(val/10) > 0 ? Math.floor(val/10) : val;
+          let isBomb = val >= 10;
+          const disc = document.createElement('div');
+          disc.classList.add('disc', `player${player}`, 'dropAnimation');
+          if(isBomb) {
+            disc.innerHTML = '💣';
+            disc.classList.add('bomb');
+          }
+          cell.appendChild(disc);
         }
       }
     }
   }
 
-  restartBtn.addEventListener('click', () => {
-    if (gameOver) {
-      initBoard();
+  // AI play
+  function aiPlay() {
+    if(gameOver) return;
+    if(difficulty === 'medium') {
+      mediumAIPlay();
     } else {
-      if(confirm("Voulez-vous abandonner la partie en cours ?")) {
-        initBoard();
+      hardAIPlay();
+    }
+  }
+
+  // AI moyen : blocage simple + victoire
+  function mediumAIPlay() {
+    // 1) Peut-il gagner au prochain coup ?
+    for(let c=0; c<COLS; c++) {
+      if(!isColumnPlayable(c)) continue;
+      let row = getNextRow(c);
+      board[row][c] = 2; // joue IA
+      if(checkWin(row,c)) {
+        board[row][c] = 0;
+        placeDisc(c, 2);
+        return;
+      }
+      board[row][c] = 0;
+    }
+    // 2) Bloquer victoire joueur ?
+    for(let c=0; c<COLS; c++) {
+      if(!isColumnPlayable(c)) continue;
+      let row = getNextRow(c);
+      board[row][c] = 1; // joue joueur
+      if(checkWin(row,c)) {
+        board[row][c] = 0;
+        placeDisc(c, 2);
+        return;
+      }
+      board[row][c] = 0;
+    }
+    // 3) Sinon jouer coup aléatoire jouable
+    let validCols = [];
+    for(let c=0; c<COLS; c++) {
+      if(isColumnPlayable(c)) validCols.push(c);
+    }
+    if(validCols.length > 0) {
+      const c = validCols[Math.floor(Math.random()*validCols.length)];
+      placeDisc(c, 2);
+    }
+  }
+
+  // IA difficile avec mini-max
+  function hardAIPlay() {
+    let bestScore = -Infinity;
+    let bestCol = null;
+    for(let c=0; c<COLS; c++) {
+      if(!isColumnPlayable(c)) continue;
+      let row = getNextRow(c);
+      board[row][c] = 2;
+      let score = minimax(board, MAX_DEPTH -1, false, -Infinity, Infinity);
+      board[row][c] = 0;
+      if(score > bestScore) {
+        bestScore = score;
+        bestCol = c;
       }
     }
-  });
+    if(bestCol !== null) placeDisc(bestCol, 2);
+    else mediumAIPlay();
+  }
 
-  resetScoreBtn.addEventListener('click', () => {
-    scoreP1 = 0;
-    scoreP2 = 0;
-    updateScore();
+  // Retourne la ligne où tomberait un jeton dans la colonne
+  function getNextRow(col) {
+    for(let r=ROWS-1; r>=0; r--) {
+      if(board[r][col] === 0) return r;
+    }
+    return -1;
+  }
+
+  // Mini-max avec élagage alpha-beta
+  // playerMax = true => IA joue (player=2)
+  function minimax(boardState, depth, playerMax, alpha, beta) {
+    if(depth === 0) return evaluateBoard(boardState);
+    if(isTerminalNode(boardState)) {
+      if(checkBoardWin(boardState, 2)) return 10000;
+      else if(checkBoardWin(boardState, 1)) return -10000;
+      else return 0;
+    }
+
+    if(playerMax) {
+      let maxEval = -Infinity;
+      for(let c=0; c<COLS; c++) {
+        let r = getNextRowForBoard(boardState,c);
+        if(r === -1) continue;
+        boardState[r][c] = 2;
+        let evalScore = minimax(boardState, depth-1, false, alpha, beta);
+        boardState[r][c] = 0;
+        maxEval = Math.max(maxEval, evalScore);
+        alpha = Math.max(alpha, evalScore);
+        if(beta <= alpha) break;
+      }
+      return maxEval;
+    } else {
+      let minEval = Infinity;
+      for(let c=0; c<COLS; c++) {
+        let r = getNextRowForBoard(boardState,c);
+        if(r === -1) continue;
+        boardState[r][c] = 1;
+        let evalScore = minimax(boardState, depth-1, true, alpha, beta);
+        boardState[r][c] = 0;
+        minEval = Math.min(minEval, evalScore);
+        beta = Math.min(beta, evalScore);
+        if(beta <= alpha) break;
+      }
+      return minEval;
+    }
+  }
+
+  // Retourne la ligne du prochain jeton sur un board donné
+  function getNextRowForBoard(boardState, col) {
+    for(let r=ROWS-1; r>=0; r--) {
+      if(boardState[r][col] === 0) return r;
+    }
+    return -1;
+  }
+
+  // Vérifie victoire sur board donné pour player
+  function checkBoardWin(boardState, player) {
+    for(let r=0; r<ROWS; r++) {
+      for(let c=0; c<COLS; c++) {
+        if(boardState[r][c] !== player) continue;
+        // check 4 directions
+        if(checkWinDirection(boardState, r, c, player, 0,1)) return true;
+        if(checkWinDirection(boardState, r, c, player, 1,0)) return true;
+        if(checkWinDirection(boardState, r, c, player, 1,1)) return true;
+        if(checkWinDirection(boardState, r, c, player, 1,-1)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Check 4 jetons consécutifs dans direction dr,dc
+  function checkWinDirection(boardState, r, c, player, dr, dc) {
+    let count = 0;
+    for(let i=0; i<4; i++) {
+      let nr = r + dr*i;
+      let nc = c + dc*i;
+      if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return false;
+      if(boardState[nr][nc] !== player) return false;
+      count++;
+    }
+    return count === 4;
+  }
+
+  // Évaluation simple du plateau pour minimax (différence jetons)
+  function evaluateBoard(boardState) {
+    let score = 0;
+    // Simple heuristique : +100 pour chaque 4 en ligne IA, -100 pour joueur, +10 pour 3, -10 pour joueur 3, etc
+    if(checkBoardWin(boardState, 2)) return 10000;
+    if(checkBoardWin(boardState, 1)) return -10000;
+
+    // Bonus 3 en ligne (approximatif)
+    score += countSequences(boardState, 2, 3) * 10;
+    score -= countSequences(boardState, 1, 3) * 10;
+
+    // Bonus 2 en ligne
+    score += countSequences(boardState, 2, 2);
+    score -= countSequences(boardState, 1, 2);
+
+    return score;
+  }
+
+  // Compte séquences consécutives de longueur n pour player
+  function countSequences(boardState, player, length) {
+    let count = 0;
+    for(let r=0; r<ROWS; r++) {
+      for(let c=0; c<COLS; c++) {
+        if(boardState[r][c] !== player) continue;
+        if(checkWinDirection(boardState, r, c, player, 0, 1)) {
+          if(checkLength(boardState, r, c, player, 0, 1) === length) count++;
+        }
+        if(checkWinDirection(boardState, r, c, player, 1, 0)) {
+          if(checkLength(boardState, r, c, player, 1, 0) === length) count++;
+        }
+        if(checkWinDirection(boardState, r, c, player, 1, 1)) {
+          if(checkLength(boardState, r, c, player, 1, 1) === length) count++;
+        }
+        if(checkWinDirection(boardState, r, c, player, 1, -1)) {
+          if(checkLength(boardState, r, c, player, 1, -1) === length) count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  // Check longueur exacte n dans direction dr, dc
+  function checkLength(boardState, r, c, player, dr, dc) {
+    let length = 0;
+    for(let i=0; i<4; i++) {
+      let nr = r + dr*i;
+      let nc = c + dc*i;
+      if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+      if(boardState[nr][nc] === player) length++;
+      else break;
+    }
+    return length;
+  }
+
+  // Après explosion gravité check victoire pour player
+  function checkWinAfterGravity(player) {
+    for(let r=0; r<ROWS; r++) {
+      for(let c=0; c<COLS; c++) {
+        let val = Math.floor(board[r][c]/10) > 0 ? Math.floor(board[r][c]/10) : board[r][c];
+        if(val === player) {
+          if(checkWin(r,c)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Update cursor styles for playable columns
+  function updateCellsCursor() {
+    for(let c=0; c<COLS; c++) {
+      let colPlayable = isColumnPlayable(c);
+      for(let r=0; r<ROWS; r++) {
+        const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+        if(cell) {
+          if(!gameOver && currentPlayer === 1 && colPlayable && board[r][c] === 0 && r === getNextRow(c)) {
+            cell.classList.add('highlighted');
+          } else {
+            cell.classList.remove('highlighted');
+          }
+        }
+      }
+    }
+  }
+
+  // Boutons restart/reset score
+  restartBtn.addEventListener('click', () => {
+    if (scoreP1 >= 2 || scoreP2 >= 2) {
+      scoreP1 = 0; scoreP2 = 0;
+      updateScore();
+    }
     initBoard();
   });
 
-  // Init
+  resetScoreBtn.addEventListener('click', () => {
+    scoreP1 = 0; scoreP2 = 0;
+    updateScore();
+  });
+
+  // Initialisation
   initBoard();
-  updateScore();
 
 </script>
 
 </body>
 </html>
+
