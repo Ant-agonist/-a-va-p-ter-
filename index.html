@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Puissance 4</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(7, 60px);
+      grid-template-rows: repeat(6, 60px);
+      gap: 5px;
+      margin-bottom: 20px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #0077b6;
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: inset 0 0 10px #023e8a;
+      transition: background-color 0.3s;
+    }
+    .cell:hover {
+      background-color: #0096c7;
+    }
+    .disc {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: white;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
+    }
+    .player1 {
+      background-color: #ef233c; /* rouge */
+      box-shadow: inset 0 0 10px #9e1c2e;
+    }
+    .player2 {
+      background-color: #ffd60a; /* jaune */
+      box-shadow: inset 0 0 10px #a88607;
+    }
+    #status {
+      font-size: 1.2em;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 1em;
+      background-color: #023e8a;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0077b6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Puissance 4</h1>
+  <div id="status">Joueur 1 (rouge), à vous de jouer !</div>
+  <div id="game"></div>
+  <button id="restart">Recommencer</button>
+
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+    let board = [];
+    let currentPlayer = 1; // 1 ou 2
+    const gameDiv = document.getElementById('game');
+    const statusDiv = document.getElementById('status');
+    const restartBtn = document.getElementById('restart');
+    let gameOver = false;
+
+    function initBoard() {
+      board = [];
+      gameDiv.innerHTML = '';
+      for(let r = 0; r < ROWS; r++) {
+        let row = [];
+        for(let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.addEventListener('click', () => {
+            if (!gameOver) placeDisc(c);
+          });
+          gameDiv.appendChild(cell);
+          row.push(0);
+        }
+        board.push(row);
+      }
+      currentPlayer = 1;
+      gameOver = false;
+      statusDiv.textContent = "Joueur 1 (rouge), à vous de jouer !";
+    }
+
+    function placeDisc(col) {
+      for(let row = ROWS - 1; row >= 0; row--) {
+        if(board[row][col] === 0) {
+          board[row][col] = currentPlayer;
+          updateBoard();
+          if (checkWin(row, col)) {
+            statusDiv.textContent = `Joueur ${currentPlayer} a gagné ! 🎉`;
+            gameOver = true;
+          } else if (isDraw()) {
+            statusDiv.textContent = "Match nul !";
+            gameOver = true;
+          } else {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            statusDiv.textContent = `Joueur ${currentPlayer} (${currentPlayer === 1 ? 'rouge' : 'jaune'}), à vous de jouer !`;
+          }
+          break;
+        }
+      }
+    }
+
+    function updateBoard() {
+      for(let r = 0; r < ROWS; r++) {
+        for(let c = 0; c < COLS; c++) {
+          const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+          cell.innerHTML = '';
+          if(board[r][c] !== 0) {
+            const disc = document.createElement('div');
+            disc.classList.add('disc');
+            disc.classList.add(board[r][c] === 1 ? 'player1' : 'player2');
+            cell.appendChild(disc);
+          }
+        }
+      }
+    }
+
+    function checkWin(row, col) {
+      const player = board[row][col];
+
+      // Vérifier une ligne de 4 directions : horizontale, verticale, 2 diagonales
+
+      function countDirection(rStep, cStep) {
+        let count = 0;
+        let r = row + rStep;
+        let c = col + cStep;
+        while(r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+          count++;
+          r += rStep;
+          c += cStep;
+        }
+        return count;
+      }
+
+      const directions = [
+        [0, 1],  // horizontale droite
+        [1, 0],  // verticale bas
+        [1, 1],  // diagonale bas droite
+        [1, -1]  // diagonale bas gauche
+      ];
+
+      for (const [rStep, cStep] of directions) {
+        let total = 1; // le pion posé
+        total += countDirection(rStep, cStep);
+        total += countDirection(-rStep, -cStep);
+        if (total >= 4) return true;
+      }
+      return false;
+    }
+
+    function isDraw() {
+      return board.every(row => row.every(cell => cell !== 0));
+    }
+
+    restartBtn.addEventListener('click', () => {
+      initBoard();
+    });
+
+    initBoard();
+  </script>
+</body>
+</html>
