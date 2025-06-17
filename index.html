@@ -1,195 +1,331 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Puissance 4</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #f0f8ff;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      margin-bottom: 10px;
-    }
-    #game {
-      display: grid;
-      grid-template-columns: repeat(7, 60px);
-      grid-template-rows: repeat(6, 60px);
-      gap: 5px;
-      margin-bottom: 20px;
-    }
-    .cell {
-      width: 60px;
-      height: 60px;
-      background-color: #0077b6;
-      border-radius: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      box-shadow: inset 0 0 10px #023e8a;
-      transition: background-color 0.3s;
-    }
-    .cell:hover {
-      background-color: #0096c7;
-    }
-    .disc {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: white;
-      box-shadow: inset 0 0 8px rgba(0,0,0,0.3);
-    }
-    .player1 {
-      background-color: #ef233c; /* rouge */
-      box-shadow: inset 0 0 10px #9e1c2e;
-    }
-    .player2 {
-      background-color: #ffd60a; /* jaune */
-      box-shadow: inset 0 0 10px #a88607;
-    }
-    #status {
-      font-size: 1.2em;
-      margin-bottom: 15px;
-    }
-    button {
-      padding: 10px 15px;
-      font-size: 1em;
-      background-color: #023e8a;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #0077b6;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Puissance 4 - Vs IA & Score BO3</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0a3d62;
+    color: #f5f6fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 25px;
+    margin: 0;
+    min-height: 100vh;
+  }
+  h1 {
+    margin-bottom: 5px;
+  }
+  #controls {
+    margin-bottom: 20px;
+  }
+  #modeSelect {
+    padding: 8px;
+    font-size: 1em;
+    margin-right: 20px;
+    border-radius: 6px;
+    border: none;
+  }
+  #game {
+    display: grid;
+    grid-template-columns: repeat(7, 70px);
+    grid-template-rows: repeat(6, 70px);
+    gap: 8px;
+    background: #1e3799;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #1e3799;
+  }
+  .cell {
+    width: 70px;
+    height: 70px;
+    background-color: #4a69bd;
+    border-radius: 50%;
+    box-shadow: inset 0 4px 6px #2c3e50;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.25s ease;
+    position: relative;
+  }
+  .cell:hover {
+    background-color: #60a3bc;
+  }
+  .disc {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    transform: translateY(-150px);
+    animation-fill-mode: forwards;
+  }
+  .player1 {
+    background: radial-gradient(circle at 30% 30%, #e74c3c, #b71c1c);
+  }
+  .player2 {
+    background: radial-gradient(circle at 30% 30%, #f1c40f, #b7950b);
+  }
+  .dropAnimation {
+    animation-name: drop;
+    animation-duration: 0.5s;
+    animation-timing-function: ease-out;
+  }
+  @keyframes drop {
+    0% { transform: translateY(-150px); }
+    100% { transform: translateY(0); }
+  }
+  #status {
+    margin: 20px 0 10px 0;
+    font-size: 1.4em;
+    min-height: 40px;
+    text-align: center;
+  }
+  #scoreboard {
+    margin-bottom: 20px;
+    font-size: 1.2em;
+  }
+  #restart, #resetScore {
+    padding: 10px 18px;
+    font-size: 1em;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    background-color: #1e3799;
+    color: #f5f6fa;
+    box-shadow: 0 4px 8px #1e3799;
+    transition: background-color 0.3s;
+  }
+  #restart:hover, #resetScore:hover {
+    background-color: #3742fa;
+  }
+  #footer {
+    margin-top: auto;
+    font-size: 0.85em;
+    color: #ced6e0;
+  }
+</style>
 </head>
 <body>
-  <h1>Puissance 4</h1>
-  <div id="status">Joueur 1 (rouge), à vous de jouer !</div>
-  <div id="game"></div>
-  <button id="restart">Recommencer</button>
 
-  <script>
-    const ROWS = 6;
-    const COLS = 7;
-    let board = [];
-    let currentPlayer = 1; // 1 ou 2
-    const gameDiv = document.getElementById('game');
-    const statusDiv = document.getElementById('status');
-    const restartBtn = document.getElementById('restart');
-    let gameOver = false;
+<h1>Puissance 4 - Vs IA & Score BO3</h1>
 
-    function initBoard() {
-      board = [];
-      gameDiv.innerHTML = '';
-      for(let r = 0; r < ROWS; r++) {
-        let row = [];
-        for(let c = 0; c < COLS; c++) {
-          const cell = document.createElement('div');
-          cell.classList.add('cell');
-          cell.dataset.row = r;
-          cell.dataset.col = c;
-          cell.addEventListener('click', () => {
-            if (!gameOver) placeDisc(c);
-          });
-          gameDiv.appendChild(cell);
-          row.push(0);
-        }
-        board.push(row);
-      }
-      currentPlayer = 1;
-      gameOver = false;
-      statusDiv.textContent = "Joueur 1 (rouge), à vous de jouer !";
-    }
+<div id="controls">
+  <label for="modeSelect">Mode :</label>
+  <select id="modeSelect" aria-label="Sélectionner le mode de jeu">
+    <option value="pvp">2 Joueurs</option>
+    <option value="pve">Contre l'ordinateur</option>
+  </select>
+  <button id="restart">Nouvelle partie</button>
+  <button id="resetScore">Réinitialiser score</button>
+</div>
 
-    function placeDisc(col) {
-      for(let row = ROWS - 1; row >= 0; row--) {
-        if(board[row][col] === 0) {
-          board[row][col] = currentPlayer;
-          updateBoard();
-          if (checkWin(row, col)) {
-            statusDiv.textContent = `Joueur ${currentPlayer} a gagné ! 🎉`;
-            gameOver = true;
-          } else if (isDraw()) {
-            statusDiv.textContent = "Match nul !";
-            gameOver = true;
-          } else {
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-            statusDiv.textContent = `Joueur ${currentPlayer} (${currentPlayer === 1 ? 'rouge' : 'jaune'}), à vous de jouer !`;
+<div id="scoreboard">
+  <span>Score - Joueur 1 (rouge) : <span id="scoreP1">0</span></span> | 
+  <span>Joueur 2 (jaune) : <span id="scoreP2">0</span></span>
+</div>
+
+<div id="status" role="status" aria-live="polite">Joueur 1 (rouge), à vous de jouer !</div>
+
+<div id="game" aria-label="Grille du jeu Puissance 4" role="grid" tabindex="0"></div>
+
+<div id="footer">Fait avec ❤️ par ChatGPT</div>
+
+<script>
+  const ROWS = 6;
+  const COLS = 7;
+
+  let board = [];
+  let currentPlayer = 1;
+  let gameOver = false;
+  let mode = 'pvp'; // ou 'pve'
+  let scoreP1 = 0;
+  let scoreP2 = 0;
+
+  const gameDiv = document.getElementById('game');
+  const statusDiv = document.getElementById('status');
+  const modeSelect = document.getElementById('modeSelect');
+  const restartBtn = document.getElementById('restart');
+  const resetScoreBtn = document.getElementById('resetScore');
+  const scoreP1Span = document.getElementById('scoreP1');
+  const scoreP2Span = document.getElementById('scoreP2');
+
+  function initBoard() {
+    board = [];
+    gameDiv.innerHTML = '';
+    for(let r = 0; r < ROWS; r++) {
+      let row = [];
+      for(let c = 0; c < COLS; c++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.setAttribute('role', 'gridcell');
+        cell.setAttribute('aria-label', `Ligne ${r+1}, colonne ${c+1}`);
+        cell.addEventListener('click', () => {
+          if (!gameOver && currentPlayer === 1) { // Joueur 1 joue toujours (même en PVE)
+            placeDisc(c);
           }
-          break;
-        }
+        });
+        gameDiv.appendChild(cell);
+        row.push(0);
       }
+      board.push(row);
     }
+    currentPlayer = 1;
+    gameOver = false;
+    updateStatus(`Joueur 1 (rouge), à vous de jouer !`);
+  }
 
-    function updateBoard() {
-      for(let r = 0; r < ROWS; r++) {
-        for(let c = 0; c < COLS; c++) {
-          const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
-          cell.innerHTML = '';
-          if(board[r][c] !== 0) {
-            const disc = document.createElement('div');
-            disc.classList.add('disc');
-            disc.classList.add(board[r][c] === 1 ? 'player1' : 'player2');
-            cell.appendChild(disc);
+  function updateStatus(message) {
+    statusDiv.textContent = message;
+  }
+
+  function placeDisc(col) {
+    if (gameOver) return;
+
+    for(let row = ROWS -1; row >= 0; row--) {
+      if (board[row][col] === 0) {
+        board[row][col] = currentPlayer;
+        animateDisc(row, col, currentPlayer);
+
+        if (checkWin(row, col)) {
+          gameOver = true;
+          if (currentPlayer === 1) scoreP1++;
+          else scoreP2++;
+          updateScore();
+          updateStatus(`🎉 Joueur ${currentPlayer} a gagné !`);
+        } else if (isDraw()) {
+          gameOver = true;
+          updateStatus(`Match nul !`);
+        } else {
+          currentPlayer = currentPlayer === 1 ? 2 : 1;
+          updateStatus(`Joueur ${currentPlayer} (${currentPlayer === 1 ? 'rouge' : 'jaune'}), à vous de jouer !`);
+          if (mode === 'pve' && currentPlayer === 2 && !gameOver) {
+            // IA joue avec un petit délai
+            setTimeout(aiPlay, 700);
           }
         }
+        return;
       }
     }
+    // Colonne pleine => pas de place, rien ne se passe
+  }
 
-    function checkWin(row, col) {
-      const player = board[row][col];
+  function animateDisc(row, col, player) {
+    const cell = gameDiv.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+    const disc = document.createElement('div');
+    disc.classList.add('disc', `player${player}`, 'dropAnimation');
+    cell.appendChild(disc);
+  }
 
-      // Vérifier une ligne de 4 directions : horizontale, verticale, 2 diagonales
+  function updateScore() {
+    scoreP1Span.textContent = scoreP1;
+    scoreP2Span.textContent = scoreP2;
+    if (scoreP1 >= 2) {
+      updateStatus('🏆 Joueur 1 a gagné le BO3 !');
+      gameOver = true;
+    } else if (scoreP2 >= 2) {
+      updateStatus('🏆 Joueur 2 a gagné le BO3 !');
+      gameOver = true;
+    }
+  }
 
-      function countDirection(rStep, cStep) {
-        let count = 0;
-        let r = row + rStep;
-        let c = col + cStep;
-        while(r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
-          count++;
-          r += rStep;
-          c += cStep;
-        }
-        return count;
+  function checkWin(row, col) {
+    const player = board[row][col];
+    if (player === 0) return false;
+
+    function countDir(rStep, cStep) {
+      let r = row + rStep;
+      let c = col + cStep;
+      let count = 0;
+      while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
+        count++;
+        r += rStep;
+        c += cStep;
       }
-
-      const directions = [
-        [0, 1],  // horizontale droite
-        [1, 0],  // verticale bas
-        [1, 1],  // diagonale bas droite
-        [1, -1]  // diagonale bas gauche
-      ];
-
-      for (const [rStep, cStep] of directions) {
-        let total = 1; // le pion posé
-        total += countDirection(rStep, cStep);
-        total += countDirection(-rStep, -cStep);
-        if (total >= 4) return true;
-      }
-      return false;
+      return count;
     }
 
-    function isDraw() {
-      return board.every(row => row.every(cell => cell !== 0));
-    }
+    const directions = [
+      [0, 1],   // horizontale droite
+      [1, 0],   // verticale bas
+      [1, 1],   // diagonale bas droite
+      [1, -1]   // diagonale bas gauche
+    ];
 
-    restartBtn.addEventListener('click', () => {
+    for (const [rStep, cStep] of directions) {
+      let total = 1;
+      total += countDir(rStep, cStep);
+      total += countDir(-rStep, -cStep);
+      if (total >= 4) return true;
+    }
+    return false;
+  }
+
+  function isDraw() {
+    return board.every(row => row.every(cell => cell !== 0));
+  }
+
+  function aiPlay() {
+    if (gameOver) return;
+
+    // IA simple : choisit une colonne aléatoire non pleine
+    let availableCols = [];
+    for(let c = 0; c < COLS; c++) {
+      if(board[0][c] === 0) availableCols.push(c);
+    }
+    if (availableCols.length === 0) return;
+
+    // Option : améliorer IA pour essayer de bloquer joueur ou gagner
+    // Mais ici IA aléatoire simple
+    const choice = availableCols[Math.floor(Math.random() * availableCols.length)];
+    placeDisc(choice);
+  }
+
+  modeSelect.addEventListener('change', () => {
+    mode = modeSelect.value;
+    resetGameAndScore();
+  });
+
+  restartBtn.addEventListener('click', () => {
+    resetGame();
+  });
+
+  resetScoreBtn.addEventListener('click', () => {
+    scoreP1 = 0;
+    scoreP2 = 0;
+    updateScore();
+    resetGame();
+  });
+
+  function resetGame() {
+    if (gameOver) {
       initBoard();
-    });
+    } else {
+      // Demander confirmation si on veut abandonner partie en cours
+      if(confirm("Voulez-vous abandonner la partie en cours ?")) {
+        initBoard();
+      }
+    }
+  }
 
+  function resetGameAndScore() {
+    scoreP1 = 0;
+    scoreP2 = 0;
+    updateScore();
     initBoard();
-  </script>
+  }
+
+  // Initialisation du jeu
+  initBoard();
+  updateScore();
+
+</script>
+
 </body>
 </html>
-
