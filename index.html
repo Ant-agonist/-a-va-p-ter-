@@ -194,7 +194,6 @@
   const scoreP1Span = document.getElementById('scoreP1');
   const scoreP2Span = document.getElementById('scoreP2');
 
-  // Pour stocker les cases gagnantes (animation)
   let winningCells = [];
 
   function initBoard() {
@@ -211,7 +210,7 @@
         cell.setAttribute('role', 'gridcell');
         cell.setAttribute('aria-label', `Ligne ${r+1}, colonne ${c+1}`);
         cell.addEventListener('click', () => {
-          if (!gameOver && currentPlayer === 1) {
+          if (!gameOver && currentPlayer === 1 && isColumnPlayable(c)) {
             placeDisc(c);
           }
         });
@@ -253,7 +252,7 @@
           updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
           updateCellsCursor();
           if (currentPlayer === 2 && !gameOver) {
-            setTimeout(aiPlay, 800);
+            setTimeout(aiPlay, 700);
           }
         }
         updateCellsCursor();
@@ -264,17 +263,10 @@
 
   function animateDisc(row, col, player) {
     const cell = gameDiv.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
+    if (!cell) return;
     const disc = document.createElement('div');
     disc.classList.add('disc', `player${player}`, 'dropAnimation');
     cell.appendChild(disc);
-
-    // Si colonne pleine, ajoute classe 'full' pour désactiver hover/click
-    if(row === 0) cell.classList.add('full');
-    else {
-      // Vérifie si la cellule au-dessus est pleine, si oui, ajoute 'full' à cette cellule
-      const cellAbove = gameDiv.querySelector(`.cell[data-row='${row-1}'][data-col='${col}']`);
-      if(cellAbove) cellAbove.classList.add('full');
-    }
   }
 
   function updateScore() {
@@ -291,7 +283,6 @@
     }
   }
 
-  // Modif checkWin pour retourner la liste des cases gagnantes en plus du booléen
   function checkWin(row, col) {
     const player = board[row][col];
     if (player === 0) return false;
@@ -336,7 +327,7 @@
   }
 
   function isDraw() {
-    return board.every(row => row.every(cell => cell !== 0));
+    return board[0].every(cell => cell !== 0);
   }
 
   function highlightWinningCells() {
@@ -349,14 +340,12 @@
   function aiPlay() {
     if (gameOver) return;
 
-    // IA simple : colonne aléatoire non pleine
+    // Colonnes non pleines
     let availableCols = [];
     for(let c = 0; c < COLS; c++) {
-      if(board[0][c] === 0) availableCols.push(c);
+      if (board[0][c] === 0) availableCols.push(c);
     }
     if (availableCols.length === 0) return;
-
-    // IA plus intelligente : essayer de gagner ou bloquer
 
     // Essayer de gagner
     for (const c of availableCols) {
@@ -373,7 +362,6 @@
 
     // Essayer de bloquer joueur
     for (const c of availableCols) {
- {
       let r = getNextEmptyRow(c);
       if (r === -1) continue;
       board[r][c] = 1;
@@ -397,21 +385,21 @@
     return -1;
   }
 
-  // Met à jour le curseur et l'opacité des cellules selon disponibilité
+  function isColumnPlayable(col) {
+    return board[0][col] === 0;
+  }
+
   function updateCellsCursor() {
     for(let r=0; r<ROWS; r++) {
       for(let c=0; c<COLS; c++) {
         const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
         if (!cell) continue;
 
-        // Si partie finie, disable tous les curseurs
         if(gameOver) {
           cell.style.cursor = 'default';
-          cell.classList.add('full');
           continue;
         }
 
-        // La seule cellule cliquable dans une colonne est la plus basse vide
         if(r === getNextEmptyRow(c)) {
           cell.style.cursor = currentPlayer === 1 ? 'pointer' : 'default';
           cell.classList.remove('full');
@@ -440,7 +428,7 @@
     initBoard();
   });
 
-  // Initialisation
+  // Init
   initBoard();
   updateScore();
 
