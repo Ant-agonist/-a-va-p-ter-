@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Puissance 4 - Vs IA & Score BO3</title>
+<title>Puissance 4 - Contre l'ordinateur & Score BO3</title>
 <style>
   body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,13 +21,6 @@
   }
   #controls {
     margin-bottom: 20px;
-  }
-  #modeSelect {
-    padding: 8px;
-    font-size: 1em;
-    margin-right: 20px;
-    border-radius: 6px;
-    border: none;
   }
   #game {
     display: grid;
@@ -112,24 +105,19 @@
 </head>
 <body>
 
-<h1>Puissance 4 - Vs IA & Score BO3</h1>
+<h1>Puissance 4 - Contre l'ordinateur & Score BO3</h1>
 
 <div id="controls">
-  <label for="modeSelect">Mode :</label>
-  <select id="modeSelect" aria-label="Sélectionner le mode de jeu">
-    <option value="pvp">2 Joueurs</option>
-    <option value="pve">Contre l'ordinateur</option>
-  </select>
   <button id="restart">Nouvelle partie</button>
   <button id="resetScore">Réinitialiser score</button>
 </div>
 
 <div id="scoreboard">
-  <span>Score - Joueur 1 (rouge) : <span id="scoreP1">0</span></span> | 
-  <span>Joueur 2 (jaune) : <span id="scoreP2">0</span></span>
+  <span>Score - Joueur (rouge) : <span id="scoreP1">0</span></span> | 
+  <span>Ordinateur (jaune) : <span id="scoreP2">0</span></span>
 </div>
 
-<div id="status" role="status" aria-live="polite">Joueur 1 (rouge), à vous de jouer !</div>
+<div id="status" role="status" aria-live="polite">Joueur (rouge), à vous de jouer !</div>
 
 <div id="game" aria-label="Grille du jeu Puissance 4" role="grid" tabindex="0"></div>
 
@@ -140,15 +128,13 @@
   const COLS = 7;
 
   let board = [];
-  let currentPlayer = 1;
+  let currentPlayer = 1; // 1 = joueur, 2 = IA
   let gameOver = false;
-  let mode = 'pvp'; // ou 'pve'
   let scoreP1 = 0;
   let scoreP2 = 0;
 
   const gameDiv = document.getElementById('game');
   const statusDiv = document.getElementById('status');
-  const modeSelect = document.getElementById('modeSelect');
   const restartBtn = document.getElementById('restart');
   const resetScoreBtn = document.getElementById('resetScore');
   const scoreP1Span = document.getElementById('scoreP1');
@@ -167,7 +153,7 @@
         cell.setAttribute('role', 'gridcell');
         cell.setAttribute('aria-label', `Ligne ${r+1}, colonne ${c+1}`);
         cell.addEventListener('click', () => {
-          if (!gameOver && currentPlayer === 1) { // Joueur 1 joue toujours (même en PVE)
+          if (!gameOver && currentPlayer === 1) {
             placeDisc(c);
           }
         });
@@ -178,7 +164,7 @@
     }
     currentPlayer = 1;
     gameOver = false;
-    updateStatus(`Joueur 1 (rouge), à vous de jouer !`);
+    updateStatus(`Joueur (rouge), à vous de jouer !`);
   }
 
   function updateStatus(message) {
@@ -198,22 +184,20 @@
           if (currentPlayer === 1) scoreP1++;
           else scoreP2++;
           updateScore();
-          updateStatus(`🎉 Joueur ${currentPlayer} a gagné !`);
+          updateStatus(`🎉 ${currentPlayer === 1 ? 'Vous avez' : "L'ordinateur a"} gagné !`);
         } else if (isDraw()) {
           gameOver = true;
           updateStatus(`Match nul !`);
         } else {
           currentPlayer = currentPlayer === 1 ? 2 : 1;
-          updateStatus(`Joueur ${currentPlayer} (${currentPlayer === 1 ? 'rouge' : 'jaune'}), à vous de jouer !`);
-          if (mode === 'pve' && currentPlayer === 2 && !gameOver) {
-            // IA joue avec un petit délai
-            setTimeout(aiPlay, 700);
+          updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
+          if (currentPlayer === 2 && !gameOver) {
+            setTimeout(aiPlay, 800);
           }
         }
         return;
       }
     }
-    // Colonne pleine => pas de place, rien ne se passe
   }
 
   function animateDisc(row, col, player) {
@@ -227,10 +211,10 @@
     scoreP1Span.textContent = scoreP1;
     scoreP2Span.textContent = scoreP2;
     if (scoreP1 >= 2) {
-      updateStatus('🏆 Joueur 1 a gagné le BO3 !');
+      updateStatus('🏆 Vous avez gagné le BO3 ! 🎉');
       gameOver = true;
     } else if (scoreP2 >= 2) {
-      updateStatus('🏆 Joueur 2 a gagné le BO3 !');
+      updateStatus("🏆 L'ordinateur a gagné le BO3 ! 😞");
       gameOver = true;
     }
   }
@@ -274,54 +258,71 @@
   function aiPlay() {
     if (gameOver) return;
 
-    // IA simple : choisit une colonne aléatoire non pleine
+    // IA simple : colonne aléatoire non pleine
     let availableCols = [];
     for(let c = 0; c < COLS; c++) {
       if(board[0][c] === 0) availableCols.push(c);
     }
     if (availableCols.length === 0) return;
 
-    // Option : améliorer IA pour essayer de bloquer joueur ou gagner
-    // Mais ici IA aléatoire simple
+    // IA plus intelligente : essayer de gagner ou bloquer
+
+    // Essayer de gagner
+    for (const c of availableCols) {
+      let r = getNextEmptyRow(c);
+      if (r === -1) continue;
+      board[r][c] = 2;
+      if (checkWin(r, c)) {
+        board[r][c] = 0;
+        placeDisc(c);
+        return;
+      }
+      board[r][c] = 0;
+    }
+
+    // Essayer de bloquer joueur
+    for (const c of availableCols) {
+      let r = getNextEmptyRow(c);
+      if (r === -1) continue;
+      board[r][c] = 1;
+      if (checkWin(r, c)) {
+        board[r][c] = 0;
+        placeDisc(c);
+        return;
+      }
+      board[r][c] = 0;
+    }
+
+    // Sinon colonne aléatoire
     const choice = availableCols[Math.floor(Math.random() * availableCols.length)];
     placeDisc(choice);
   }
 
-  modeSelect.addEventListener('change', () => {
-    mode = modeSelect.value;
-    resetGameAndScore();
-  });
+  function getNextEmptyRow(col) {
+    for(let r = ROWS - 1; r >= 0; r--) {
+      if (board[r][col] === 0) return r;
+    }
+    return -1;
+  }
 
   restartBtn.addEventListener('click', () => {
-    resetGame();
+    if (gameOver) {
+      initBoard();
+    } else {
+      if(confirm("Voulez-vous abandonner la partie en cours ?")) {
+        initBoard();
+      }
+    }
   });
 
   resetScoreBtn.addEventListener('click', () => {
     scoreP1 = 0;
     scoreP2 = 0;
     updateScore();
-    resetGame();
+    initBoard();
   });
 
-  function resetGame() {
-    if (gameOver) {
-      initBoard();
-    } else {
-      // Demander confirmation si on veut abandonner partie en cours
-      if(confirm("Voulez-vous abandonner la partie en cours ?")) {
-        initBoard();
-      }
-    }
-  }
-
-  function resetGameAndScore() {
-    scoreP1 = 0;
-    scoreP2 = 0;
-    updateScore();
-    initBoard();
-  }
-
-  // Initialisation du jeu
+  // Initialisation
   initBoard();
   updateScore();
 
