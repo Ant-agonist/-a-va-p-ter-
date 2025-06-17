@@ -1,715 +1,609 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Puissance 4 avec Bombe & IA avancée</title>
-<style>
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #0a3d62;
-    color: #f5f6fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 25px;
-    margin: 0;
-    min-height: 100vh;
-  }
-  h1 {
-    margin-bottom: 5px;
-    text-align: center;
-  }
-  #controls {
-    margin-bottom: 20px;
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-  }
-  #difficultySelect {
-    padding: 6px 10px;
-    font-size: 1em;
-    border-radius: 5px;
-    border: none;
-  }
-  #game {
-    display: grid;
-    grid-template-columns: repeat(7, 70px);
-    grid-template-rows: repeat(6, 70px);
-    gap: 8px;
-    background: #1e3799;
-    padding: 10px;
-    border-radius: 12px;
-    box-shadow: 0 0 20px #1e3799;
-    user-select: none;
-  }
-  .cell {
-    width: 70px;
-    height: 70px;
-    background-color: #4a69bd;
-    border-radius: 50%;
-    box-shadow: inset 0 4px 6px #2c3e50;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: background-color 0.25s ease;
-    position: relative;
-  }
-  .cell:hover:not(.full):not(.highlighted) {
-    background-color: #60a3bc;
-  }
-  .cell.full {
-    cursor: default;
-  }
-  .disc {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
-    transform: translateY(-150px);
-    animation-fill-mode: forwards;
-  }
-  .player1 {
-    background: radial-gradient(circle at 30% 30%, #e74c3c, #b71c1c);
-  }
-  .player2 {
-    background: radial-gradient(circle at 30% 30%, #f1c40f, #b7950b);
-  }
-  .bomb {
-    font-size: 30px;
-    color: black;
-    text-shadow: 1px 1px 3px #fff inset;
-  }
-  .dropAnimation {
-    animation-name: drop;
-    animation-duration: 0.5s;
-    animation-timing-function: ease-out;
-  }
-  @keyframes drop {
-    0% { transform: translateY(-150px); }
-    100% { transform: translateY(0); }
-  }
-  .highlighted {
-    animation: blink 1s infinite alternate;
-    box-shadow: 0 0 15px 5px yellow;
-  }
-  @keyframes blink {
-    from {
-      box-shadow: 0 0 15px 5px yellow;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Puissance 4 vs IA avec bombes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1e2a47;
+      color: white;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
     }
-    to {
-      box-shadow: 0 0 30px 10px orange;
-    }
-  }
-  #status {
-    margin: 20px 0 10px 0;
-    font-size: 1.4em;
-    min-height: 40px;
-    text-align: center;
-  }
-  #scoreboard {
-    margin-bottom: 20px;
-    font-size: 1.2em;
-    text-align: center;
-  }
-  #restart, #resetScore {
-    padding: 10px 18px;
-    font-size: 1em;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    background-color: #1e3799;
-    color: #f5f6fa;
-    box-shadow: 0 4px 8px #1e3799;
-    transition: background-color 0.3s;
-  }
-  #restart:hover, #resetScore:hover {
-    background-color: #3742fa;
-  }
-  #footer {
-    margin-top: auto;
-    font-size: 0.85em;
-    color: #ced6e0;
-  }
-  /* Responsive */
-  @media (max-width: 600px) {
     #game {
-      grid-template-columns: repeat(7, 40px);
-      grid-template-rows: repeat(6, 40px);
+      display: grid;
+      grid-template-columns: repeat(7, 60px);
+      grid-template-rows: repeat(6, 60px);
       gap: 5px;
-      padding: 6px;
+      background: #0a1a2a;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 20px;
+      user-select: none;
+      width: 100%;
+      max-width: 420px;
     }
     .cell {
-      width: 40px;
-      height: 40px;
-      box-shadow: inset 0 3px 4px #2c3e50;
+      background: #003366;
+      border-radius: 50%;
+      box-shadow: inset 0 0 5px #001a33;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .cell.highlighted {
+      box-shadow: 0 0 10px 4px #ffd700 inset;
     }
     .disc {
-      width: 35px;
-      height: 35px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin: 5px auto;
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      user-select: none;
     }
-    #restart, #resetScore {
-      padding: 8px 14px;
-      font-size: 0.9em;
+    .player1 {
+      background: radial-gradient(circle at center, #ff4444, #aa0000);
+      box-shadow: 0 0 10px #ff4444;
+      color: white;
+    }
+    .player2 {
+      background: radial-gradient(circle at center, #44aaff, #0055aa);
+      box-shadow: 0 0 10px #44aaff;
+      color: white;
+    }
+    .bomb {
+      font-size: 24px;
+      color: yellow;
+      text-shadow: 0 0 8px #ffcc00;
+    }
+    .highlighted {
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px 4px #ffd700 inset; }
+      100% { box-shadow: 0 0 20px 8px #ffec5c inset; }
     }
     #status {
-      font-size: 1.1em;
-      margin: 15px 0 8px;
+      margin-bottom: 15px;
+      font-size: 1.2em;
+      min-height: 1.5em;
+    }
+    #controls {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #0055aa;
+      color: white;
+      transition: background 0.3s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #0077dd;
+    }
+    button:disabled {
+      background: #333;
+      cursor: default;
+    }
+    select {
+      font-size: 1em;
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: none;
+      background: #003366;
+      color: white;
     }
     #scoreboard {
-      font-size: 1em;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+      text-align: center;
     }
-  }
-</style>
+    @media (max-width: 480px) {
+      #game {
+        grid-template-columns: repeat(7, 40px);
+        grid-template-rows: repeat(6, 40px);
+        gap: 4px;
+        max-width: 300px;
+      }
+      .disc {
+        width: 34px;
+        height: 34px;
+        margin: 3px auto;
+        font-size: 20px;
+      }
+      .bomb {
+        font-size: 18px;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<h1>Puissance 4 avec Bombe & IA avancée</h1>
+  <h1>Puissance 4 vs Ordinateur</h1>
 
-<div id="controls">
-  <label for="difficultySelect">Difficulté IA :</label>
-  <select id="difficultySelect" aria-label="Choisir la difficulté de l'ordinateur">
-    <option value="medium" selected>Moyen</option>
-    <option value="hard">Difficile</option>
-  </select>
-  <button id="restart">Nouvelle partie</button>
-  <button id="resetScore">Réinitialiser score</button>
-</div>
+  <div id="status">À vous de jouer !</div>
 
-<div id="scoreboard" aria-live="polite" aria-atomic="true">
-  <span>Score - Joueur (rouge) : <span id="scoreP1">0</span></span> | 
-  <span>Ordinateur (jaune) : <span id="scoreP2">0</span></span>
-</div>
+  <div id="controls">
+    <label for="difficulty">Difficulté IA :</label>
+    <select id="difficulty">
+      <option value="medium">Moyenne</option>
+      <option value="hard">Difficile</option>
+    </select>
+    <button id="restartBtn">Recommencer</button>
+    <button id="resetScoreBtn">Réinitialiser Score</button>
+  </div>
 
-<div id="status" role="status" aria-live="polite">Joueur (rouge), à vous de jouer !</div>
+  <div id="scoreboard">
+    Joueur : <span id="scoreP1">0</span> - Ordinateur : <span id="scoreP2">0</span> (BO3)
+  </div>
 
-<div id="game" aria-label="Grille du jeu Puissance 4" role="grid" tabindex="0"></div>
+  <div id="game"></div>
 
-<div id="footer">Fait avec ❤️ par ChatGPT</div>
+  <script>
+    const ROWS = 6;
+    const COLS = 7;
+    const BOMB_CHANCE = 0.1;
+    const MAX_DEPTH = 3; // profondeur mini-max réduite
 
-<script>
-  const ROWS = 6;
-  const COLS = 7;
-  const MAX_DEPTH = 4;
+    const gameDiv = document.getElementById('game');
+    const statusDiv = document.getElementById('status');
+    const difficultySelect = document.getElementById('difficulty');
+    const restartBtn = document.getElementById('restartBtn');
+    const resetScoreBtn = document.getElementById('resetScoreBtn');
+    const scoreP1Span = document.getElementById('scoreP1');
+    const scoreP2Span = document.getElementById('scoreP2');
 
-  let board = [];
-  let currentPlayer = 1; // 1 = joueur, 2 = IA
-  let gameOver = false;
-  let scoreP1 = 0;
-  let scoreP2 = 0;
-  let winningCells = [];
-  let difficulty = 'medium'; // 'medium' or 'hard'
+    let board = [];
+    let gameOver = false;
+    let currentPlayer = 1; // 1 = joueur, 2 = IA
+    let winningCells = [];
+    let scoreP1 = 0;
+    let scoreP2 = 0;
+    let difficulty = difficultySelect.value;
 
-  const gameDiv = document.getElementById('game');
-  const statusDiv = document.getElementById('status');
-  const restartBtn = document.getElementById('restart');
-  const resetScoreBtn = document.getElementById('resetScore');
-  const scoreP1Span = document.getElementById('scoreP1');
-  const scoreP2Span = document.getElementById('scoreP2');
-  const difficultySelect = document.getElementById('difficultySelect');
+    difficultySelect.addEventListener('change', () => {
+      difficulty = difficultySelect.value;
+    });
 
-  difficultySelect.addEventListener('change', () => {
-    difficulty = difficultySelect.value;
-  });
-
-  function initBoard() {
-    board = [];
-    gameDiv.innerHTML = '';
-    winningCells = [];
-    for(let r = 0; r < ROWS; r++) {
-      let row = [];
-      for(let c = 0; c < COLS; c++) {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        cell.setAttribute('role', 'gridcell');
-        cell.setAttribute('aria-label', `Ligne ${r+1}, colonne ${c+1}`);
-        cell.addEventListener('click', () => {
-          if (!gameOver && currentPlayer === 1 && isColumnPlayable(c)) {
-            placeDisc(c, 1);
-          }
-        });
-        gameDiv.appendChild(cell);
-        row.push(0);
+    function initBoard() {
+      board = [];
+      for(let r=0; r<ROWS; r++) {
+        board.push(new Array(COLS).fill(0));
       }
-      board.push(row);
+      gameOver = false;
+      currentPlayer = 1;
+      winningCells = [];
+      statusDiv.textContent = "À vous de jouer !";
+      renderBoard();
+      updateCellsCursor();
     }
-    currentPlayer = 1;
-    gameOver = false;
-    updateStatus(`Joueur (rouge), à vous de jouer !`);
-    updateCellsCursor();
-  }
 
-  function updateStatus(message) {
-    statusDiv.textContent = message;
-  }
-
-  // placeDisc avec paramètre player et bombage
-  // si joueur 1, bombes 10% chance
-  function placeDisc(col, player, isFromGravity=false) {
-    if (gameOver) return;
-
-    for(let row = ROWS -1; row >= 0; row--) {
-      if (board[row][col] === 0) {
-        let isBomb = false;
-        if (!isFromGravity && player === 1) {
-          isBomb = Math.random() < 0.10;
-        } else if (!isFromGravity && player === 2) {
-          // Option : IA peut aussi avoir bombes ? Ici non.
-          isBomb = false;
-        }
-
-        board[row][col] = player * (isBomb ? 10 : 1); // bombe = 10*player (10 ou 20)
-
-        animateDisc(row, col, player, isBomb);
-
-        if (!isFromGravity && isBomb) {
-          // bombe => enlever jeton adverse aléatoire
-          removeRandomOpponentDisc(player);
-          applyGravity();
-          renderBoardAfterGravity();
-          // check victoire après gravité
-          if (checkWinAfterGravity(player)) {
-            gameOver = true;
-            if (player === 1) scoreP1++;
-            else scoreP2++;
-            updateScore();
-            updateStatus(`🎉 ${player === 1 ? 'Vous avez' : "L'ordinateur a"} gagné après explosion !`);
-            highlightWinningCells();
-            return;
+    function renderBoard() {
+      gameDiv.innerHTML = '';
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          if(winningCells.some(([wr,wc]) => wr === r && wc === c)) {
+            cell.classList.add('highlighted');
           }
+          cell.addEventListener('click', () => {
+            if(gameOver) return;
+            if(currentPlayer !== 1) return;
+            if(!isColumnPlayable(c)) return;
+            playerPlay(c);
+          });
+          gameDiv.appendChild(cell);
         }
+      }
+      renderDiscs();
+    }
 
-        if (!isFromGravity) {
-          if (checkWin(row, col)) {
-            gameOver = true;
-            if (player === 1) scoreP1++;
-            else scoreP2++;
-            updateScore();
-            updateStatus(`🎉 ${player === 1 ? 'Vous avez' : "L'ordinateur a"} gagné !`);
-            highlightWinningCells();
-          } else if (isDraw()) {
-            gameOver = true;
-            updateStatus(`Match nul !`);
-          } else {
-            currentPlayer = currentPlayer === 1 ? 2 : 1;
-            updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
-            updateCellsCursor();
-            if (currentPlayer === 2 && !gameOver) {
-              setTimeout(aiPlay, 700);
+    function renderDiscs() {
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+          cell.innerHTML = '';
+          const val = board[r][c];
+          if(val !== 0) {
+            const isBomb = val >= 10;
+            const player = isBomb ? Math.floor(val/10) : val;
+            const disc = document.createElement('div');
+            disc.classList.add('disc', `player${player}`, 'dropAnimation');
+            if(isBomb) {
+              disc.textContent = '💣';
+              disc.classList.add('bomb');
             }
+            cell.appendChild(disc);
           }
-          updateCellsCursor();
         }
+      }
+    }
+
+    function isColumnPlayable(col) {
+      return board[0][col] === 0;
+    }
+
+    function getNextRow(col) {
+      for(let r=ROWS-1; r>=0; r--) {
+        if(board[r][col] === 0) return r;
+      }
+      return -1;
+    }
+
+    function playerPlay(col) {
+      if(gameOver) return;
+      const row = getNextRow(col);
+      if(row === -1) return;
+
+      // Chance de bombes
+      const isBomb = Math.random() < BOMB_CHANCE;
+      board[row][col] = isBomb ? 10 + 1 : 1; // 10+1 = bombe joueur1, 1 = jeton normal
+
+      renderBoard();
+
+      if(isBomb) {
+        removeRandomOpponentDisc(1);
+        applyGravity();
+        renderBoard();
+      }
+
+      if(checkWin(row, col)) {
+        scoreP1++;
+        updateScore();
+        statusDiv.textContent = `🎉 Vous avez gagné cette manche !`;
+        gameOver = true;
+        highlightWinningCells();
+        checkBO3();
         return;
       }
-    }
-  }
-
-  function animateDisc(row, col, player, isBomb) {
-    const cell = gameDiv.querySelector(`.cell[data-row='${row}'][data-col='${col}']`);
-    if (!cell) return;
-    cell.innerHTML = ''; // clear before adding disc
-    const disc = document.createElement('div');
-    disc.classList.add('disc', `player${player}`, 'dropAnimation');
-    if (isBomb) {
-      disc.innerHTML = '💣';
-      disc.classList.add('bomb');
-    }
-    cell.appendChild(disc);
-  }
-
-  function updateScore() {
-    scoreP1Span.textContent = scoreP1;
-    scoreP2Span.textContent = scoreP2;
-    if (scoreP1 >= 2) {
-      updateStatus('🏆 Vous avez gagné le BO3 ! 🎉');
-      gameOver = true;
-      highlightWinningCells();
-    } else if (scoreP2 >= 2) {
-      updateStatus('💻 L\'ordinateur a gagné le BO3 ! 😞');
-      gameOver = true;
-      highlightWinningCells();
-    }
-  }
-
-  function isColumnPlayable(col) {
-    return board[0][col] === 0;
-  }
-
-  function checkWin(row, col) {
-    const playerVal = Math.floor(board[row][col] / 10) > 0 ? Math.floor(board[row][col]/10) : board[row][col];
-    winningCells = [];
-
-    // directions to check: horizontal, vertical, diag1, diag2
-    const directions = [
-      { dr: 0, dc: 1 },
-      { dr: 1, dc: 0 },
-      { dr: 1, dc: 1 },
-      { dr: 1, dc: -1 },
-    ];
-
-    for (const {dr, dc} of directions) {
-      let count = 1;
-      let line = [[row,col]];
-      // check one side
-      for(let i=1; i<4; i++) {
-        let nr = row + dr*i;
-        let nc = col + dc*i;
-        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
-        let val = Math.floor(board[nr][nc]/10) > 0 ? Math.floor(board[nr][nc]/10) : board[nr][nc];
-        if (val === playerVal) {
-          count++;
-          line.push([nr,nc]);
-        } else break;
+      if(isDraw()) {
+        statusDiv.textContent = "Match nul !";
+        gameOver = true;
+        checkBO3();
+        return;
       }
-      // check opposite side
-      for(let i=1; i<4; i++) {
-        let nr = row - dr*i;
-        let nc = col - dc*i;
-        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
-        let val = Math.floor(board[nr][nc]/10) > 0 ? Math.floor(board[nr][nc]/10) : board[nr][nc];
-        if (val === playerVal) {
-          count++;
-          line.push([nr,nc]);
-        } else break;
+
+      currentPlayer = 2;
+      statusDiv.textContent = "L'ordinateur réfléchit...";
+      setTimeout(() => aiPlay(), 300);
+    }
+
+    function placeDisc(col, player) {
+      const row = getNextRow(col);
+      if(row === -1) return false;
+
+      const isBomb = Math.random() < BOMB_CHANCE;
+      board[row][col] = isBomb ? 10 + player : player;
+
+      renderBoard();
+
+      if(isBomb) {
+        removeRandomOpponentDisc(player);
+        applyGravity();
+        renderBoard();
       }
-      if (count >= 4) {
-        winningCells = line;
+
+      if(checkWin(row, col)) {
+        if(player === 2) {
+          scoreP2++;
+          updateScore();
+          statusDiv.textContent = "💻 L'ordinateur a gagné cette manche !";
+        }
+        gameOver = true;
+        highlightWinningCells();
+        checkBO3();
         return true;
       }
-    }
-    return false;
-  }
+      if(isDraw()) {
+        statusDiv.textContent = "Match nul !";
+        gameOver = true;
+        checkBO3();
+        return true;
+      }
 
-  // Highlight winning cells with animation
-  function highlightWinningCells() {
-    if (!winningCells.length) return;
-    for(const [r,c] of winningCells) {
-      const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
-      if(cell) cell.classList.add('highlighted');
+      currentPlayer = player === 1 ? 2 : 1;
+      statusDiv.textContent = currentPlayer === 1 ? "À vous de jouer !" : "L'ordinateur réfléchit...";
+      updateCellsCursor();
+      return true;
     }
-  }
 
-  function isDraw() {
-    for(let c=0; c < COLS; c++) {
-      if(board[0][c] === 0) return false;
-    }
-    return true;
-  }
+    function checkWin(row, col) {
+      const val = board[row][col];
+      const playerVal = Math.floor(val / 10) > 0 ? Math.floor(val / 10) : val;
+      winningCells = [];
 
-  // Remove random opponent disc when bomb explodes
-  function removeRandomOpponentDisc(player) {
-    const opponent = player === 1 ? 2 : 1;
-    let opponentPositions = [];
-    for(let r=0; r < ROWS; r++) {
-      for(let c=0; c < COLS; c++) {
-        let val = Math.floor(board[r][c]/10) > 0 ? Math.floor(board[r][c]/10) : board[r][c];
-        if(val === opponent) {
-          opponentPositions.push([r,c]);
+      const directions = [
+        { dr: 0, dc: 1 },
+        { dr: 1, dc: 0 },
+        { dr: 1, dc: 1 },
+        { dr: 1, dc: -1 },
+      ];
+
+      for(const {dr, dc} of directions) {
+        let count = 1;
+        let line = [[row, col]];
+
+        // check one side
+        for(let i=1; i<4; i++) {
+          const nr = row + dr*i;
+          const nc = col + dc*i;
+          if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+          let val = board[nr][nc];
+          let valPlayer = Math.floor(val / 10) > 0 ? Math.floor(val / 10) : val;
+          if(valPlayer === playerVal) {
+            count++;
+            line.push([nr,nc]);
+          } else break;
+        }
+        // check opposite side
+        for(let i=1; i<4; i++) {
+          const nr = row - dr*i;
+          const nc = col - dc*i;
+          if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+          let val = board[nr][nc];
+          let valPlayer = Math.floor(val / 10) > 0 ? Math.floor(val / 10) : val;
+          if(valPlayer === playerVal) {
+            count++;
+            line.push([nr,nc]);
+          } else break;
+        }
+        if(count >= 4) {
+          winningCells = line;
+          return true;
         }
       }
-    }
-    if(opponentPositions.length === 0) return; // rien à enlever
-
-    // choisir un jeton adverse aléatoire à retirer
-    const [rr,cc] = opponentPositions[Math.floor(Math.random()*opponentPositions.length)];
-    board[rr][cc] = 0;
-  }
-
-  // Appliquer gravité : faire tomber jetons dans colonnes si trou
-  function applyGravity() {
-    for(let c=0; c<COLS; c++) {
-      let newCol = [];
-      // collect non-zero jetons (disc or bomb)
-      for(let r=ROWS-1; r>=0; r--) {
-        if(board[r][c] !== 0) newCol.push(board[r][c]);
-      }
-      // remplir la colonne en partant du bas
-      for(let r=ROWS-1; r>=0; r--) {
-        board[r][c] = newCol[ROWS-1 - r] || 0;
-      }
-    }
-  }
-
-  // Met à jour visuellement la grille après gravité (animation plus simple)
-  function renderBoardAfterGravity() {
-    for(let r=0; r<ROWS; r++) {
-      for(let c=0; c<COLS; c++) {
-        const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
-        cell.innerHTML = '';
-        let val = board[r][c];
-        if(val !== 0) {
-          let player = Math.floor(val/10) > 0 ? Math.floor(val/10) : val;
-          let isBomb = val >= 10;
-          const disc = document.createElement('div');
-          disc.classList.add('disc', `player${player}`, 'dropAnimation');
-          if(isBomb) {
-            disc.innerHTML = '💣';
-            disc.classList.add('bomb');
-          }
-          cell.appendChild(disc);
-        }
-      }
-    }
-  }
-
-  // AI play
-  function aiPlay() {
-    if(gameOver) return;
-    if(difficulty === 'medium') {
-      mediumAIPlay();
-    } else {
-      hardAIPlay();
-    }
-  }
-
-  // AI moyen : blocage simple + victoire
-  function mediumAIPlay() {
-    // 1) Peut-il gagner au prochain coup ?
-    for(let c=0; c<COLS; c++) {
-      if(!isColumnPlayable(c)) continue;
-      let row = getNextRow(c);
-      board[row][c] = 2; // joue IA
-      if(checkWin(row,c)) {
-        board[row][c] = 0;
-        placeDisc(c, 2);
-        return;
-      }
-      board[row][c] = 0;
-    }
-    // 2) Bloquer victoire joueur ?
-    for(let c=0; c<COLS; c++) {
-      if(!isColumnPlayable(c)) continue;
-      let row = getNextRow(c);
-      board[row][c] = 1; // joue joueur
-      if(checkWin(row,c)) {
-        board[row][c] = 0;
-        placeDisc(c, 2);
-        return;
-      }
-      board[row][c] = 0;
-    }
-    // 3) Sinon jouer coup aléatoire jouable
-    let validCols = [];
-    for(let c=0; c<COLS; c++) {
-      if(isColumnPlayable(c)) validCols.push(c);
-    }
-    if(validCols.length > 0) {
-      const c = validCols[Math.floor(Math.random()*validCols.length)];
-      placeDisc(c, 2);
-    }
-  }
-
-  // IA difficile avec mini-max
-  function hardAIPlay() {
-    let bestScore = -Infinity;
-    let bestCol = null;
-    for(let c=0; c<COLS; c++) {
-      if(!isColumnPlayable(c)) continue;
-      let row = getNextRow(c);
-      board[row][c] = 2;
-      let score = minimax(board, MAX_DEPTH -1, false, -Infinity, Infinity);
-      board[row][c] = 0;
-      if(score > bestScore) {
-        bestScore = score;
-        bestCol = c;
-      }
-    }
-    if(bestCol !== null) placeDisc(bestCol, 2);
-    else mediumAIPlay();
-  }
-
-  // Retourne la ligne où tomberait un jeton dans la colonne
-  function getNextRow(col) {
-    for(let r=ROWS-1; r>=0; r--) {
-      if(board[r][col] === 0) return r;
-    }
-    return -1;
-  }
-
-  // Mini-max avec élagage alpha-beta
-  // playerMax = true => IA joue (player=2)
-  function minimax(boardState, depth, playerMax, alpha, beta) {
-    if(depth === 0) return evaluateBoard(boardState);
-    if(isTerminalNode(boardState)) {
-      if(checkBoardWin(boardState, 2)) return 10000;
-      else if(checkBoardWin(boardState, 1)) return -10000;
-      else return 0;
+      return false;
     }
 
-    if(playerMax) {
-      let maxEval = -Infinity;
-      for(let c=0; c<COLS; c++) {
-        let r = getNextRowForBoard(boardState,c);
-        if(r === -1) continue;
-        boardState[r][c] = 2;
-        let evalScore = minimax(boardState, depth-1, false, alpha, beta);
-        boardState[r][c] = 0;
-        maxEval = Math.max(maxEval, evalScore);
-        alpha = Math.max(alpha, evalScore);
-        if(beta <= alpha) break;
-      }
-      return maxEval;
-    } else {
-      let minEval = Infinity;
-      for(let c=0; c<COLS; c++) {
-        let r = getNextRowForBoard(boardState,c);
-        if(r === -1) continue;
-        boardState[r][c] = 1;
-        let evalScore = minimax(boardState, depth-1, true, alpha, beta);
-        boardState[r][c] = 0;
-        minEval = Math.min(minEval, evalScore);
-        beta = Math.min(beta, evalScore);
-        if(beta <= alpha) break;
-      }
-      return minEval;
-    }
-  }
-
-  // Retourne la ligne du prochain jeton sur un board donné
-  function getNextRowForBoard(boardState, col) {
-    for(let r=ROWS-1; r>=0; r--) {
-      if(boardState[r][col] === 0) return r;
-    }
-    return -1;
-  }
-
-  // Vérifie victoire sur board donné pour player
-  function checkBoardWin(boardState, player) {
-    for(let r=0; r<ROWS; r++) {
-      for(let c=0; c<COLS; c++) {
-        if(boardState[r][c] !== player) continue;
-        // check 4 directions
-        if(checkWinDirection(boardState, r, c, player, 0,1)) return true;
-        if(checkWinDirection(boardState, r, c, player, 1,0)) return true;
-        if(checkWinDirection(boardState, r, c, player, 1,1)) return true;
-        if(checkWinDirection(boardState, r, c, player, 1,-1)) return true;
-      }
-    }
-    return false;
-  }
-
-  // Check 4 jetons consécutifs dans direction dr,dc
-  function checkWinDirection(boardState, r, c, player, dr, dc) {
-    let count = 0;
-    for(let i=0; i<4; i++) {
-      let nr = r + dr*i;
-      let nc = c + dc*i;
-      if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) return false;
-      if(boardState[nr][nc] !== player) return false;
-      count++;
-    }
-    return count === 4;
-  }
-
-  // Évaluation simple du plateau pour minimax (différence jetons)
-  function evaluateBoard(boardState) {
-    let score = 0;
-    // Simple heuristique : +100 pour chaque 4 en ligne IA, -100 pour joueur, +10 pour 3, -10 pour joueur 3, etc
-    if(checkBoardWin(boardState, 2)) return 10000;
-    if(checkBoardWin(boardState, 1)) return -10000;
-
-    // Bonus 3 en ligne (approximatif)
-    score += countSequences(boardState, 2, 3) * 10;
-    score -= countSequences(boardState, 1, 3) * 10;
-
-    // Bonus 2 en ligne
-    score += countSequences(boardState, 2, 2);
-    score -= countSequences(boardState, 1, 2);
-
-    return score;
-  }
-
-  // Compte séquences consécutives de longueur n pour player
-  function countSequences(boardState, player, length) {
-    let count = 0;
-    for(let r=0; r<ROWS; r++) {
-      for(let c=0; c<COLS; c++) {
-        if(boardState[r][c] !== player) continue;
-        if(checkWinDirection(boardState, r, c, player, 0, 1)) {
-          if(checkLength(boardState, r, c, player, 0, 1) === length) count++;
-        }
-        if(checkWinDirection(boardState, r, c, player, 1, 0)) {
-          if(checkLength(boardState, r, c, player, 1, 0) === length) count++;
-        }
-        if(checkWinDirection(boardState, r, c, player, 1, 1)) {
-          if(checkLength(boardState, r, c, player, 1, 1) === length) count++;
-        }
-        if(checkWinDirection(boardState, r, c, player, 1, -1)) {
-          if(checkLength(boardState, r, c, player, 1, -1) === length) count++;
-        }
-      }
-    }
-    return count;
-  }
-
-  // Check longueur exacte n dans direction dr, dc
-  function checkLength(boardState, r, c, player, dr, dc) {
-    let length = 0;
-    for(let i=0; i<4; i++) {
-      let nr = r + dr*i;
-      let nc = c + dc*i;
-      if(nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
-      if(boardState[nr][nc] === player) length++;
-      else break;
-    }
-    return length;
-  }
-
-  // Après explosion gravité check victoire pour player
-  function checkWinAfterGravity(player) {
-    for(let r=0; r<ROWS; r++) {
-      for(let c=0; c<COLS; c++) {
-        let val = Math.floor(board[r][c]/10) > 0 ? Math.floor(board[r][c]/10) : board[r][c];
-        if(val === player) {
-          if(checkWin(r,c)) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  // Update cursor styles for playable columns
-  function updateCellsCursor() {
-    for(let c=0; c<COLS; c++) {
-      let colPlayable = isColumnPlayable(c);
-      for(let r=0; r<ROWS; r++) {
+    function highlightWinningCells() {
+      renderBoard();
+      for(const [r,c] of winningCells) {
         const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
         if(cell) {
-          if(!gameOver && currentPlayer === 1 && colPlayable && board[r][c] === 0 && r === getNextRow(c)) {
-            cell.classList.add('highlighted');
-          } else {
-            cell.classList.remove('highlighted');
-          }
+          cell.classList.add('highlighted');
         }
       }
     }
-  }
 
-  // Boutons restart/reset score
-  restartBtn.addEventListener('click', () => {
-    if (scoreP1 >= 2 || scoreP2 >= 2) {
-      scoreP1 = 0; scoreP2 = 0;
-      updateScore();
+    function isDraw() {
+      for(let c=0; c<COLS; c++) {
+        if(board[0][c] === 0) return false;
+      }
+      return true;
     }
+
+    // Supprime un jeton adverse au hasard (bombes)
+    function removeRandomOpponentDisc(player) {
+      const opponent = player === 1 ? 2 : 1;
+      const opponentPositions = [];
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          let val = board[r][c];
+          if(val !== 0) {
+            let valPlayer = Math.floor(val / 10) > 0 ? Math.floor(val / 10) : val;
+            if(valPlayer === opponent) {
+              opponentPositions.push([r,c]);
+            }
+          }
+        }
+      }
+      if(opponentPositions.length === 0) return; // rien à supprimer
+      const [rr, cc] = opponentPositions[Math.floor(Math.random() * opponentPositions.length)];
+      board[rr][cc] = 0;
+    }
+
+    // Appliquer la gravité après suppression jeton (bombes)
+    function applyGravity() {
+      for(let c=0; c<COLS; c++) {
+        let stack = [];
+        for(let r=ROWS-1; r>=0; r--) {
+          if(board[r][c] !== 0) {
+            stack.push(board[r][c]);
+            board[r][c] = 0;
+          }
+        }
+        let r = ROWS-1;
+        for(const val of stack) {
+          board[r][c] = val;
+          r--;
+        }
+      }
+    }
+
+    function updateScore() {
+      scoreP1Span.textContent = scoreP1;
+      scoreP2Span.textContent = scoreP2;
+    }
+
+    function checkBO3() {
+      if(scoreP1 >= 2) {
+        statusDiv.textContent = "🎉 Félicitations, vous avez gagné le BO3 !";
+        gameOver = true;
+      } else if(scoreP2 >= 2) {
+        statusDiv.textContent = "L'ordinateur a gagné le BO3. Essayez encore !";
+        gameOver = true;
+      } else if(gameOver) {
+        setTimeout(() => {
+          initBoard();
+        }, 2000);
+      }
+    }
+
+    restartBtn.addEventListener('click', () => {
+      initBoard();
+    });
+    resetScoreBtn.addEventListener('click', () => {
+      scoreP1 = 0;
+      scoreP2 = 0;
+      updateScore();
+      initBoard();
+      statusDiv.textContent = "Score réinitialisé. À vous de jouer !";
+    });
+
+    function updateCellsCursor() {
+      const allCells = gameDiv.querySelectorAll('.cell');
+      allCells.forEach(cell => {
+        const col = +cell.dataset.col;
+        if(isColumnPlayable(col) && currentPlayer === 1 && !gameOver) {
+          cell.style.cursor = 'pointer';
+        } else {
+          cell.style.cursor = 'default';
+        }
+      });
+    }
+
+    // ---------------- AI ----------------
+
+    function aiPlay() {
+      if(gameOver) return;
+      let col;
+      if(difficulty === 'medium') {
+        col = randomMove();
+      } else {
+        col = bestMove(board, MAX_DEPTH);
+      }
+      placeDisc(col, 2);
+      if(!gameOver) {
+        currentPlayer = 1;
+        statusDiv.textContent = "À vous de jouer !";
+        updateCellsCursor();
+      }
+    }
+
+    function randomMove() {
+      const validCols = [];
+      for(let c=0; c<COLS; c++) {
+        if(isColumnPlayable(c)) validCols.push(c);
+      }
+      return validCols[Math.floor(Math.random() * validCols.length)];
+    }
+
+    // Mini-max avec élagage alpha-beta, profondeur limitée
+    function bestMove(boardState, depth) {
+      let bestScore = -Infinity;
+      let bestCol = null;
+      for(let c=0; c<COLS; c++) {
+        const r = getNextRowForBoard(boardState, c);
+        if(r === -1) continue;
+        boardState[r][c] = 2;
+        let score = minimax(boardState, depth - 1, false, -Infinity, Infinity);
+        boardState[r][c] = 0;
+        if(score > bestScore) {
+          bestScore = score;
+          bestCol = c;
+        }
+      }
+      if(bestCol === null) return randomMove();
+      return bestCol;
+    }
+
+    function minimax(boardState, depth, maximizingPlayer, alpha, beta) {
+      if(depth === 0 || isTerminalNode(boardState)) {
+        return evaluateBoard(boardState);
+      }
+      if(maximizingPlayer) {
+        let maxEval = -Infinity;
+        for(let c=0; c<COLS; c++) {
+          let r = getNextRowForBoard(boardState, c);
+          if(r === -1) continue;
+          boardState[r][c] = 2;
+          let evalScore = minimax(boardState, depth -1, false, alpha, beta);
+          boardState[r][c] = 0;
+          maxEval = Math.max(maxEval, evalScore);
+          alpha = Math.max(alpha, evalScore);
+          if(beta <= alpha) break;
+        }
+        return maxEval;
+      } else {
+        let minEval = Infinity;
+        for(let c=0; c<COLS; c++) {
+          let r = getNextRowForBoard(boardState, c);
+          if(r === -1) continue;
+          boardState[r][c] = 1;
+          let evalScore = minimax(boardState, depth -1, true, alpha, beta);
+          boardState[r][c] = 0;
+          minEval = Math.min(minEval, evalScore);
+          beta = Math.min(beta, evalScore);
+          if(beta <= alpha) break;
+        }
+        return minEval;
+      }
+    }
+
+    function isTerminalNode(boardState) {
+      return checkBoardWin(boardState, 1) || checkBoardWin(boardState, 2) || checkBoardDraw(boardState);
+    }
+
+    function checkBoardWin(boardState, player) {
+      // cherche 4 consécutifs pour player
+      for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+          if(boardState[r][c] === player) {
+            if(checkDirection(boardState, r, c, 0, 1, player)) return true;
+            if(checkDirection(boardState, r, c, 1, 0, player)) return true;
+            if(checkDirection(boardState, r, c, 1, 1, player)) return true;
+            if(checkDirection(boardState, r, c, 1, -1, player)) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function checkDirection(boardState, row, col, dr, dc, player) {
+      for(let i=0; i<4; i++) {
+        let r = row + i*dr;
+        let c = col + i*dc;
+        if(r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+        if(boardState[r][c] !== player) return false;
+      }
+      return true;
+    }
+
+    function checkBoardDraw(boardState) {
+      for(let c=0; c<COLS; c++) {
+        if(boardState[0][c] === 0) return false;
+      }
+      return true;
+    }
+
+    function getNextRowForBoard(boardState, col) {
+      for(let r=ROWS-1; r>=0; r--) {
+        if(boardState[r][col] === 0) return r;
+      }
+      return -1;
+    }
+
+    function evaluateBoard(boardState) {
+      if(checkBoardWin(boardState, 2)) return 1000;
+      if(checkBoardWin(boardState, 1)) return -1000;
+      return 0;
+    }
+
+    // Init & start
     initBoard();
-  });
 
-  resetScoreBtn.addEventListener('click', () => {
-    scoreP1 = 0; scoreP2 = 0;
-    updateScore();
-  });
-
-  // Initialisation
-  initBoard();
-
-</script>
-
+  </script>
 </body>
 </html>
 
