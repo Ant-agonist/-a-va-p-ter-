@@ -18,9 +18,14 @@
   }
   h1 {
     margin-bottom: 5px;
+    text-align: center;
   }
   #controls {
     margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   #game {
     display: grid;
@@ -31,6 +36,7 @@
     padding: 10px;
     border-radius: 12px;
     box-shadow: 0 0 20px #1e3799;
+    user-select: none;
   }
   .cell {
     width: 70px;
@@ -45,8 +51,11 @@
     transition: background-color 0.25s ease;
     position: relative;
   }
-  .cell:hover {
+  .cell:hover:not(.full):not(.highlighted) {
     background-color: #60a3bc;
+  }
+  .cell.full {
+    cursor: default;
   }
   .disc {
     width: 60px;
@@ -71,6 +80,21 @@
     0% { transform: translateY(-150px); }
     100% { transform: translateY(0); }
   }
+
+  /* Animation de surbrillance victoire */
+  .highlighted {
+    animation: blink 1s infinite alternate;
+    box-shadow: 0 0 15px 5px yellow;
+  }
+  @keyframes blink {
+    from {
+      box-shadow: 0 0 15px 5px yellow;
+    }
+    to {
+      box-shadow: 0 0 30px 10px orange;
+    }
+  }
+
   #status {
     margin: 20px 0 10px 0;
     font-size: 1.4em;
@@ -80,11 +104,11 @@
   #scoreboard {
     margin-bottom: 20px;
     font-size: 1.2em;
+    text-align: center;
   }
   #restart, #resetScore {
     padding: 10px 18px;
     font-size: 1em;
-    margin: 5px;
     border-radius: 6px;
     border: none;
     cursor: pointer;
@@ -100,6 +124,36 @@
     margin-top: auto;
     font-size: 0.85em;
     color: #ced6e0;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    #game {
+      grid-template-columns: repeat(7, 40px);
+      grid-template-rows: repeat(6, 40px);
+      gap: 5px;
+      padding: 6px;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      box-shadow: inset 0 3px 4px #2c3e50;
+    }
+    .disc {
+      width: 35px;
+      height: 35px;
+    }
+    #restart, #resetScore {
+      padding: 8px 14px;
+      font-size: 0.9em;
+    }
+    #status {
+      font-size: 1.1em;
+      margin: 15px 0 8px;
+    }
+    #scoreboard {
+      font-size: 1em;
+    }
   }
 </style>
 </head>
@@ -140,9 +194,13 @@
   const scoreP1Span = document.getElementById('scoreP1');
   const scoreP2Span = document.getElementById('scoreP2');
 
+  // Pour stocker les cases gagnantes (animation)
+  let winningCells = [];
+
   function initBoard() {
     board = [];
     gameDiv.innerHTML = '';
+    winningCells = [];
     for(let r = 0; r < ROWS; r++) {
       let row = [];
       for(let c = 0; c < COLS; c++) {
@@ -165,6 +223,7 @@
     currentPlayer = 1;
     gameOver = false;
     updateStatus(`Joueur (rouge), à vous de jouer !`);
+    updateCellsCursor();
   }
 
   function updateStatus(message) {
@@ -185,16 +244,19 @@
           else scoreP2++;
           updateScore();
           updateStatus(`🎉 ${currentPlayer === 1 ? 'Vous avez' : "L'ordinateur a"} gagné !`);
+          highlightWinningCells();
         } else if (isDraw()) {
           gameOver = true;
           updateStatus(`Match nul !`);
         } else {
           currentPlayer = currentPlayer === 1 ? 2 : 1;
           updateStatus(`${currentPlayer === 1 ? 'Joueur (rouge), à vous de jouer !' : "Ordinateur réfléchit..."}`);
+          updateCellsCursor();
           if (currentPlayer === 2 && !gameOver) {
             setTimeout(aiPlay, 800);
           }
         }
+        updateCellsCursor();
         return;
       }
     }
@@ -205,6 +267,14 @@
     const disc = document.createElement('div');
     disc.classList.add('disc', `player${player}`, 'dropAnimation');
     cell.appendChild(disc);
+
+    // Si colonne pleine, ajoute classe 'full' pour désactiver hover/click
+    if(row === 0) cell.classList.add('full');
+    else {
+      // Vérifie si la cellule au-dessus est pleine, si oui, ajoute 'full' à cette cellule
+      const cellAbove = gameDiv.querySelector(`.cell[data-row='${row-1}'][data-col='${col}']`);
+      if(cellAbove) cellAbove.classList.add('full');
+    }
   }
 
   function updateScore() {
@@ -213,12 +283,15 @@
     if (scoreP1 >= 2) {
       updateStatus('🏆 Vous avez gagné le BO3 ! 🎉');
       gameOver = true;
+      highlightWinningCells();
     } else if (scoreP2 >= 2) {
       updateStatus("🏆 L'ordinateur a gagné le BO3 ! 😞");
       gameOver = true;
+      highlightWinningCells();
     }
   }
 
+  // Modif checkWin pour retourner la liste des cases gagnantes en plus du booléen
   function checkWin(row, col) {
     const player = board[row][col];
     if (player === 0) return false;
@@ -227,12 +300,14 @@
       let r = row + rStep;
       let c = col + cStep;
       let count = 0;
+      let cells = [];
       while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
         count++;
+        cells.push([r,c]);
         r += rStep;
         c += cStep;
       }
-      return count;
+      return {count, cells};
     }
 
     const directions = [
@@ -244,15 +319,31 @@
 
     for (const [rStep, cStep] of directions) {
       let total = 1;
-      total += countDir(rStep, cStep);
-      total += countDir(-rStep, -cStep);
-      if (total >= 4) return true;
+      let winningCellsList = [[row,col]];
+
+      let res1 = countDir(rStep, cStep);
+      let res2 = countDir(-rStep, -cStep);
+
+      total += res1.count + res2.count;
+      winningCellsList = winningCellsList.concat(res1.cells, res2.cells);
+
+      if (total >= 4) {
+        winningCells = winningCellsList;
+        return true;
+      }
     }
     return false;
   }
 
   function isDraw() {
     return board.every(row => row.every(cell => cell !== 0));
+  }
+
+  function highlightWinningCells() {
+    winningCells.forEach(([r,c]) => {
+      const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+      if(cell) cell.classList.add('highlighted');
+    });
   }
 
   function aiPlay() {
@@ -282,6 +373,7 @@
 
     // Essayer de bloquer joueur
     for (const c of availableCols) {
+ {
       let r = getNextEmptyRow(c);
       if (r === -1) continue;
       board[r][c] = 1;
@@ -303,6 +395,32 @@
       if (board[r][col] === 0) return r;
     }
     return -1;
+  }
+
+  // Met à jour le curseur et l'opacité des cellules selon disponibilité
+  function updateCellsCursor() {
+    for(let r=0; r<ROWS; r++) {
+      for(let c=0; c<COLS; c++) {
+        const cell = gameDiv.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+        if (!cell) continue;
+
+        // Si partie finie, disable tous les curseurs
+        if(gameOver) {
+          cell.style.cursor = 'default';
+          cell.classList.add('full');
+          continue;
+        }
+
+        // La seule cellule cliquable dans une colonne est la plus basse vide
+        if(r === getNextEmptyRow(c)) {
+          cell.style.cursor = currentPlayer === 1 ? 'pointer' : 'default';
+          cell.classList.remove('full');
+        } else {
+          cell.style.cursor = 'default';
+          cell.classList.add('full');
+        }
+      }
+    }
   }
 
   restartBtn.addEventListener('click', () => {
