@@ -1,343 +1,184 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Puissance 4 avec Bombes</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Puissance 4 avec Bombe</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      background-color: #f0f0f0;
-      margin: 0;
-      padding: 0;
     }
-
-    h1 {
-      margin: 20px 0;
-    }
-
-    #controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    select, button {
-      padding: 10px;
-      font-size: 16px;
-    }
-
     #board {
       display: grid;
       grid-template-columns: repeat(7, 60px);
-      grid-template-rows: repeat(6, 60px);
       gap: 5px;
       justify-content: center;
-      margin-bottom: 20px;
+      margin: 20px auto;
     }
-
     .cell {
       width: 60px;
       height: 60px;
-      background-color: #ffffff;
-      border: 2px solid #cccccc;
+      background-color: #e0e0e0;
       border-radius: 50%;
+      border: 1px solid #999;
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
     }
-
-    .player1 {
-      background-color: red;
-      border-radius: 50%;
-      width: 80%;
-      height: 80%;
-    }
-
-    .player2 {
-      background-color: yellow;
-      border-radius: 50%;
-      width: 80%;
-      height: 80%;
-    }
-
-    .bomb {
-      background-color: black;
-      border-radius: 50%;
-      width: 80%;
-      height: 80%;
-    }
-
-    #status {
-      margin-top: 20px;
-      font-size: 18px;
-      color: #333;
-    }
-
-    #scoreboard {
+    .player1 { background-color: red; }
+    .player2 { background-color: yellow; }
+    #bombe-btn {
       margin-top: 10px;
+      padding: 10px 20px;
       font-size: 16px;
-    }
-
-    @media (max-width: 480px) {
-      #board {
-        grid-template-columns: repeat(7, 40px);
-        grid-template-rows: repeat(6, 40px);
-        gap: 4px;
-      }
-
-      .cell {
-        width: 40px;
-        height: 40px;
-      }
-
-      .player1, .player2, .bomb {
-        width: 75%;
-        height: 75%;
-      }
-    }
-
-    @media (max-width: 360px) {
-      #controls {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      select, button {
-        width: 100%;
-      }
-
-      #scoreboard {
-        font-size: 1em;
-      }
-
-      h1 {
-        font-size: 1.2em;
-        text-align: center;
-      }
+      display: none;
     }
   </style>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
 </head>
 <body>
-  <h1 role="heading" aria-level="1">Puissance 4 vs Ordinateur</h1>
-  <div id="controls">
-    <select id="difficulty">
-      <option value="1">Facile</option>
-      <option value="2">Moyen</option>
-      <option value="3">Difficile</option>
-    </select>
-    <button onclick="resetGame()">Recommencer</button>
-  </div>
+  <h1>Puissance 4 avec Bombe</h1>
   <div id="board"></div>
-  <div id="status" role="status" aria-live="polite">À vous de jouer !</div>
-  <div id="scoreboard">Joueur: 0 | Ordinateur: 0</div>
+  <button id="bombe-btn">Utiliser une Bombe 💣</button>
+  <p id="status"></p>
 
   <script>
     const ROWS = 6;
     const COLS = 7;
-    const EMPTY = 0;
-    const PLAYER1 = 1;
-    const PLAYER2 = 2;
-    const BOMB = 3;
+    const board = [];
+    const boardDiv = document.getElementById('board');
+    const status = document.getElementById('status');
+    const bombeBtn = document.getElementById('bombe-btn');
 
-    let board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-    let currentPlayer = PLAYER1;
-    let gameOver = false;
-    let playerScore = 0;
-    let aiScore = 0;
+    let currentPlayer = 1;
+    let gameActive = true;
+    let bombes = { 1: 1, 2: 1 };
+    let modeBombe = false;
 
-    function renderBoard() {
-      const boardDiv = document.getElementById("board");
-      boardDiv.innerHTML = "";
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const cell = document.createElement("div");
-          cell.classList.add("cell");
-          if (board[r][c] === PLAYER1) cell.classList.add("player1");
-          else if (board[r][c] === PLAYER2) cell.classList.add("player2");
-          else if (board[r][c] === BOMB) cell.classList.add("bomb");
-          if (!gameOver && currentPlayer === PLAYER1) {
-            cell.addEventListener("click", () => playerPlay(c));
-            cell.style.cursor = "pointer";
-          } else {
-            cell.style.pointerEvents = 'none';
-          }
-          boardDiv.appendChild(cell);
-        }
+    // Initialisation du plateau
+    for (let r = 0; r < ROWS; r++) {
+      board[r] = [];
+      for (let c = 0; c < COLS; c++) {
+        board[r][c] = 0;
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        boardDiv.appendChild(cell);
       }
     }
 
-    function playerPlay(col) {
-      if (gameOver || currentPlayer !== PLAYER1) return;
-      for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r][col] === EMPTY) {
-          board[r][col] = PLAYER1;
-          if (Math.random() < 0.1) {
-            board[r][col] = BOMB;
-            explode(r, col);
-          } else if (checkWin(PLAYER1)) {
-            playerScore++;
-            document.getElementById("status").textContent = "Vous avez gagné !";
-            gameOver = true;
-            updateScoreboard();
-          } else {
-            currentPlayer = PLAYER2;
-            renderBoard();
-            setTimeout(aiPlay, 500);
-          }
-          break;
-        }
-      }
-      renderBoard();
-    }
+    function render() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        const r = cell.dataset.row;
+        const c = cell.dataset.col;
+        cell.className = 'cell';
+        if (board[r][c] === 1) cell.classList.add('player1');
+        else if (board[r][c] === 2) cell.classList.add('player2');
+      });
 
-    function aiPlay() {
-      if (gameOver) return;
-      const difficulty = parseInt(document.getElementById("difficulty").value);
-      let col;
-      if (difficulty === 1) {
-        col = Math.floor(Math.random() * COLS);
-      } else if (difficulty === 2) {
-        col = getBestMove() || Math.floor(Math.random() * COLS);
+      // Mise à jour du bouton bombe
+      if (bombes[currentPlayer] > 0 && gameActive) {
+        bombeBtn.style.display = 'inline-block';
+        bombeBtn.disabled = false;
       } else {
-        col = getBestMove() || getRandomValidColumn();
+        bombeBtn.style.display = 'none';
       }
 
+      status.textContent = `Joueur ${currentPlayer === 1 ? '🔴' : '🟡'} - ${
+        gameActive ? "À toi de jouer" : "Partie terminée"
+      }`;
+    }
+
+    function dropDisc(col) {
+      if (!gameActive) return;
       for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r][col] === EMPTY) {
-          board[r][col] = PLAYER2;
-          if (Math.random() < 0.1) {
-            board[r][col] = BOMB;
-            explode(r, col);
-          } else if (checkWin(PLAYER2)) {
-            aiScore++;
-            document.getElementById("status").textContent = "L'ordinateur a gagné !";
-            gameOver = true;
-            updateScoreboard();
+        if (board[r][col] === 0) {
+          board[r][col] = currentPlayer;
+          if (checkWin(r, col)) {
+            gameActive = false;
+            status.textContent = `Le joueur ${currentPlayer} a gagné ! 🎉`;
           } else {
-            currentPlayer = PLAYER1;
+            currentPlayer = 3 - currentPlayer;
           }
-          break;
-        }
-      }
-      renderBoard();
-    }
-
-    function explode(row, col) {
-      const directions = [[-1,0],[1,0],[0,-1],[0,1]];
-      board[row][col] = EMPTY;
-      for (const [dr, dc] of directions) {
-        const r = row + dr;
-        const c = col + dc;
-        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-          board[r][c] = EMPTY;
+          render();
+          return;
         }
       }
     }
 
-    function checkWin(player) {
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (board[r][c] === player && board[r][c+1] === player && board[r][c+2] === player && board[r][c+3] === player) return true;
+    function checkWin(r, c) {
+      const player = board[r][c];
+      const directions = [
+        [[0, 1], [0, -1]],    // Horizontale
+        [[1, 0], [-1, 0]],    // Verticale
+        [[1, 1], [-1, -1]],   // Diagonale /
+        [[1, -1], [-1, 1]]    // Diagonale \
+      ];
+      for (let dir of directions) {
+        let count = 1;
+        for (let [dr, dc] of dir) {
+          let nr = r + dr, nc = c + dc;
+          while (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr][nc] === player) {
+            count++;
+            nr += dr;
+            nc += dc;
+          }
         }
-      }
-      for (let r = 0; r <= ROWS - 4; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (board[r][c] === player && board[r+1][c] === player && board[r+2][c] === player && board[r+3][c] === player) return true;
-        }
-      }
-      for (let r = 0; r <= ROWS - 4; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (board[r][c] === player && board[r+1][c+1] === player && board[r+2][c+2] === player && board[r+3][c+3] === player) return true;
-        }
-      }
-      for (let r = 3; r < ROWS; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (board[r][c] === player && board[r-1][c+1] === player && board[r-2][c+2] === player && board[r-3][c+3] === player) return true;
-        }
+        if (count >= 4) return true;
       }
       return false;
     }
 
-    function getBestMove() {
+    function applyGravity() {
       for (let c = 0; c < COLS; c++) {
-        let tempBoard = board.map(row => [...row]);
+        let emptyRow = ROWS - 1;
         for (let r = ROWS - 1; r >= 0; r--) {
-          if (tempBoard[r][c] === EMPTY) {
-            tempBoard[r][c] = PLAYER2;
-            if (checkWinOnBoard(tempBoard, PLAYER2)) return c;
-            break;
+          if (board[r][c] !== 0) {
+            if (r !== emptyRow) {
+              board[emptyRow][c] = board[r][c];
+              board[r][c] = 0;
+            }
+            emptyRow--;
           }
         }
       }
-      for (let c = 0; c < COLS; c++) {
-        let tempBoard = board.map(row => [...row]);
-        for (let r = ROWS - 1; r >= 0; r--) {
-          if (tempBoard[r][c] === EMPTY) {
-            tempBoard[r][c] = PLAYER1;
-            if (checkWinOnBoard(tempBoard, PLAYER1)) return c;
-            break;
-          }
-        }
-      }
-      return null;
     }
 
-    function checkWinOnBoard(tempBoard, player) {
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (tempBoard[r][c] === player && tempBoard[r][c+1] === player && tempBoard[r][c+2] === player && tempBoard[r][c+3] === player) return true;
-        }
+    // Mode bombe : activer
+    bombeBtn.addEventListener('click', () => {
+      if (bombes[currentPlayer] > 0) {
+        modeBombe = true;
+        alert("💣 Sélectionnez un jeton adverse à détruire !");
       }
-      for (let r = 0; r <= ROWS - 4; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (tempBoard[r][c] === player && tempBoard[r+1][c] === player && tempBoard[r+2][c] === player && tempBoard[r+3][c] === player) return true;
-        }
-      }
-      for (let r = 0; r <= ROWS - 4; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (tempBoard[r][c] === player && tempBoard[r+1][c+1] === player && tempBoard[r+2][c+2] === player && tempBoard[r+3][c+3] === player) return true;
-        }
-      }
-      for (let r = 3; r < ROWS; r++) {
-        for (let c = 0; c <= COLS - 4; c++) {
-          if (tempBoard[r][c] === player && tempBoard[r-1][c+1] === player && tempBoard[r-2][c+2] === player && tempBoard[r-3][c+3] === player) return true;
-        }
-      }
-      return false;
-    }
+    });
 
-    function getRandomValidColumn() {
-      const validCols = [];
-      for (let c = 0; c < COLS; c++) {
-        if (board[0][c] === EMPTY) validCols.push(c);
+    boardDiv.addEventListener('click', e => {
+      if (!e.target.classList.contains('cell')) return;
+
+      const r = parseInt(e.target.dataset.row);
+      const c = parseInt(e.target.dataset.col);
+
+      if (modeBombe) {
+        if (board[r][c] !== 0 && board[r][c] !== currentPlayer) {
+          board[r][c] = 0;
+          applyGravity();
+          bombes[currentPlayer]--;
+          modeBombe = false;
+          render();
+        } else {
+          alert("💥 Sélectionnez un jeton adverse valide !");
+        }
+        return;
       }
-      return validCols[Math.floor(Math.random() * validCols.length)];
-    }
 
-    function resetGame() {
-      board = Array.from({ length: ROWS }, () => Array(COLS).fill(EMPTY));
-      currentPlayer = PLAYER1;
-      gameOver = false;
-      document.getElementById("status").textContent = "À vous de jouer !";
-      renderBoard();
-    }
+      if (board[r][c] === 0) {
+        dropDisc(c);
+      }
+    });
 
-    function updateScoreboard() {
-      document.getElementById("scoreboard").textContent = `Joueur: ${playerScore} | Ordinateur: ${aiScore}`;
-    }
-
-    renderBoard();
+    render();
   </script>
 </body>
 </html>
-
